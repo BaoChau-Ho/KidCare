@@ -1,0 +1,13 @@
+# Dockerfile cho môi trường phát triển (bản chạy thật sẽ làm ở tuần 11, trong thư mục deploy/)
+# Cần có frontend/package.json (do vai D tạo bằng Vite) trước khi build được.
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

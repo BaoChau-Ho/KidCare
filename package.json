@@ -1,0 +1,13 @@
+{
+  "name": "kidcare",
+  "version": "0.0.0",
+  "private": true,
+  "description": "KidCare - Child Care Management System (công cụ dùng chung ở thư mục gốc: định dạng code)",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}

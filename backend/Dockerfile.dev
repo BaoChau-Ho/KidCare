@@ -1,0 +1,13 @@
+# Dockerfile cho môi trường phát triển (bản chạy thật sẽ làm ở tuần 11, trong thư mục deploy/)
+# Cần có backend/package.json (do vai B tạo bằng NestJS) trước khi build được.
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+CMD ["npm", "run", "start:dev"]

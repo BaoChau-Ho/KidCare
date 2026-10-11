@@ -1,0 +1,33 @@
+# Bí mật - không bao giờ commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies và build
+node_modules/
+dist/
+build/
+coverage/
+
+# Upload và dữ liệu cục bộ
+uploads/
+backups/*.sql
+backups/*.dump
+
+# Báo cáo test
+playwright-report/
+test-results/
+.nyc_output/
+
+# Log
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

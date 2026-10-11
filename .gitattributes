@@ -1,0 +1,7 @@
+# Luôn dùng LF trong repo, tránh Windows (autocrlf) đổi thành CRLF làm Prettier báo lỗi
+* text=auto eol=lf
+
+*.pdf binary
+*.png binary
+*.jpg binary
+*.webp binary
