@@ -1,0 +1,132 @@
+:root {
+  --ink: #12302f;
+  --muted: #5b7170;
+  --teal: #0f5c5a;
+  --teal-dark: #0a4341;
+  --mint: #d9efe9;
+  --paper: #f6faf9;
+  --line: #c9dcd8;
+  --danger: #a3262a;
+  --danger-bg: #fbeaea;
+  --sun: #f0b84a;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; color: var(--ink); background: var(--paper);
+  font-family: 'Be Vietnam Pro', system-ui, sans-serif; line-height: 1.55;
+}
+a { color: var(--teal); font-weight: 500; }
+a:hover { color: var(--teal-dark); }
+
+.login-page { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+
+.login-aside {
+  background: var(--teal); color: #fff; display: flex; align-items: center;
+  padding: 3rem; position: relative; overflow: hidden;
+}
+.login-aside::after {
+  content: ''; position: absolute; right: -90px; bottom: -90px; width: 280px; height: 280px;
+  border-radius: 50%; background: var(--sun); opacity: .9;
+}
+.aside-inner { position: relative; z-index: 1; max-width: 420px; }
+.aside-inner h2 { font-size: 2rem; line-height: 1.25; margin: 0 0 1rem; }
+.aside-inner p { color: #cfe8e3; margin: 0 0 1.5rem; }
+.role-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.role-list li { background: rgba(255,255,255,.14); border-radius: 999px; padding: .3rem .85rem; font-size: .9rem; }
+
+.login-main { display: flex; align-items: center; justify-content: center; padding: 2rem 1.25rem; }
+.login-card { width: 100%; max-width: 400px; }
+.login-card h1 { margin: 0 0 .25rem; font-size: 1.75rem; }
+.sub { margin: 0 0 1.5rem; color: var(--muted); }
+
+.field { margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: .35rem; }
+label { font-weight: 500; font-size: .95rem; }
+input {
+  width: 100%; padding: .7rem .85rem; font: inherit; color: inherit;
+  background: #fff; border: 1.5px solid var(--line); border-radius: 8px;
+}
+input:focus-visible, .btn:focus-visible, .pw-toggle:focus-visible, a:focus-visible {
+  outline: 3px solid var(--sun); outline-offset: 2px;
+}
+input[aria-invalid='true'] { border-color: var(--danger); }
+.field-err { color: var(--danger); font-size: .85rem; }
+
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 4rem; }
+.pw-toggle {
+  position: absolute; right: .4rem; top: 50%; transform: translateY(-50%);
+  background: none; border: 0; color: var(--teal); font: inherit; font-weight: 500;
+  cursor: pointer; padding: .3rem .5rem; border-radius: 6px;
+}
+
+.row-end { text-align: right; margin: -.3rem 0 1.25rem; font-size: .9rem; }
+
+.btn {
+  width: 100%; padding: .8rem 1rem; font: inherit; font-weight: 600; color: #fff;
+  background: var(--teal); border: 0; border-radius: 8px; cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: var(--teal-dark); }
+.btn:disabled { opacity: .65; cursor: progress; }
+
+.alert {
+  background: var(--danger-bg); color: var(--danger); border-left: 4px solid var(--danger);
+  padding: .75rem 1rem; border-radius: 6px; margin-bottom: 1.25rem; font-size: .93rem;
+}
+.switch { text-align: center; margin-top: 1.5rem; color: var(--muted); }
+
+.stub { max-width: 520px; margin: 4rem auto; padding: 0 1.25rem; }
+.stub .btn { width: auto; margin-top: 1rem; }
+
+@media (max-width: 800px) {
+  .login-page { grid-template-columns: 1fr; }
+  .login-aside { display: none; }
+}
+
+/* ---- register / set-password / admin ---- */
+.login-card.wide { max-width: 440px; }
+select {
+  width: 100%; padding: .7rem .85rem; font: inherit; color: inherit;
+  background: #fff; border: 1.5px solid var(--line); border-radius: 8px;
+}
+select:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+select[aria-invalid='true'] { border-color: var(--danger); }
+.hint { margin: -.5rem 0 1.25rem; font-size: .85rem; color: var(--muted); }
+.notice {
+  background: var(--mint); color: var(--teal-dark); border-left: 4px solid var(--teal);
+  padding: .75rem 1rem; border-radius: 6px; margin-bottom: 1.25rem; font-size: .93rem;
+}
+.btn-link { display: block; text-align: center; text-decoration: none; margin-top: 1.25rem; }
+a.btn-link { color: #fff; }
+.rules { list-style: none; padding: 0; margin: -.4rem 0 1.1rem; font-size: .88rem; color: var(--muted); }
+.rules li.ok { color: var(--teal); font-weight: 500; }
+
+.admin { max-width: 1000px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.admin-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.admin-head h1 { margin: 0; font-size: 1.6rem; }
+.admin h2 { font-size: 1.15rem; margin: 2.5rem 0 .75rem; }
+.muted { color: var(--muted); font-size: .88rem; font-weight: 400; }
+.table-wrap { overflow-x: auto; margin-top: 1.25rem; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: .75rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--mint); font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+.empty { text-align: center; color: var(--muted); padding: 2rem; }
+.badge { padding: .15rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 600; text-transform: capitalize; }
+.badge.pending { background: #fdf0d2; color: #7a5400; }
+.badge.approved { background: #d8ecf7; color: #124a6b; }
+.badge.active { background: var(--mint); color: var(--teal-dark); }
+.badge.rejected { background: var(--danger-bg); color: var(--danger); }
+.actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+.btn-sm { width: auto; padding: .4rem .9rem; font-size: .88rem; }
+.btn-danger { background: var(--danger); }
+.btn-danger:hover:not(:disabled) { background: #7e1c20; }
+.btn-ghost { background: none; color: var(--teal); border: 1.5px solid var(--line); }
+.btn-ghost:hover:not(:disabled) { background: var(--mint); }
+.link-btn { background: none; border: 0; color: var(--teal); font: inherit; font-size: .85rem; cursor: pointer; text-decoration: underline; padding: 0; }
+.reject-box { display: flex; flex-direction: column; gap: .5rem; min-width: 220px; }
+.outbox { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+.outbox li { background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: .8rem 1rem; }
+.outbox a { display: inline-block; margin-top: .35rem; }
+
+/* ---- use case 1.3 ---- */
+.btn-link-inline { display: inline-block; text-decoration: none; text-align: center; }
