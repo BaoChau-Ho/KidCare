@@ -87,6 +87,14 @@ npm run migration:run
 
 Migration `InitialSchema` là baseline không tạo bảng. Migration `Schema` tiếp theo tạo bảng `users` theo `User` entity. Luôn xem lại SQL migration được sinh trước khi chạy. Không bật `synchronize` trong ứng dụng.
 
+Kế hoạch triển khai Stage 2, tích hợp UC-03 (quản lý tài khoản), UC-04 (hồ sơ trẻ) và UC-05 (lớp/phân công giáo viên), nằm tại [docs/roadmap/stage-2-uc03-05.md](docs/roadmap/stage-2-uc03-05.md).
+
+ERD tổng thể của KidCare nằm tại [docs/02-design/erd.md](docs/02-design/erd.md); sơ đồ ghi rõ các giả định cần nhóm xác nhận trước khi tạo migration.
+
+Class diagram tổng thể và class diagram theo từng UC được tích hợp tại [docs/02-design/class-diagram.md](docs/02-design/class-diagram.md).
+
+Hợp đồng API OpenAPI theo roadmap (UC-01 đến UC-15) nằm tại [docs/02-design/openapi.yaml](docs/02-design/openapi.yaml). File này mô tả API mục tiêu; các endpoint nghiệp vụ sẽ được triển khai theo từng giai đoạn.
+
 ## Docker
 
 ```bash

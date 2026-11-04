@@ -1,0 +1,2203 @@
+openapi: 3.1.0
+info:
+  title: KidCare API
+  version: 0.1.0
+  description: |
+    Hợp đồng API thiết kế theo roadmap và các use case UC-01 đến UC-15.
+    Đây là đặc tả mục tiêu; hiện backend mới triển khai GET /health và GET /health/ready.
+    Cập nhật đặc tả cùng pull request khi thay đổi API.
+servers:
+  - url: http://localhost:3000
+    description: Backend local
+tags:
+  - name: Health
+  - name: Auth
+  - name: Registration Requests
+  - name: Users
+  - name: Children
+  - name: Classes
+  - name: Attendance
+  - name: Leave Requests
+  - name: Health Records
+  - name: Activities
+  - name: Pickup
+  - name: Notifications
+  - name: Reports
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: getLiveness
+      summary: Kiểm tra backend còn hoạt động
+      security: []
+      responses:
+        '200':
+          description: Backend đang hoạt động
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ok }
+                  timestamp: { type: string, format: date-time }
+                required: [status, timestamp]
+
+  /health/ready:
+    get:
+      tags: [Health]
+      operationId: getReadiness
+      summary: Kiểm tra backend kết nối được database
+      security: []
+      responses:
+        '200':
+          description: Database sẵn sàng
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ok }
+                  database: { type: string, const: ok }
+                required: [status, database]
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: registerParent
+      summary: Gửi yêu cầu đăng ký tài khoản
+      description: Tạo yêu cầu ở trạng thái PENDING. Tài khoản chưa thể đăng nhập cho đến khi admin duyệt và người dùng thiết lập mật khẩu.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Yêu cầu đăng ký đã được ghi nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegistrationRequestCreated' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      operationId: getAuthenticatedUser
+      summary: Lấy thông tin người dùng đang đăng nhập
+      responses:
+        '200':
+          description: Thông tin tài khoản hiện tại
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/{id}/approve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID yêu cầu đăng ký
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Registration Requests]
+      operationId: approveRegistrationRequest
+      summary: Duyệt yêu cầu đăng ký (chỉ môi trường local)
+      description: |-
+        Endpoint hiện không có guard xác thực và chỉ được bật khi APP_ENV=local.
+        Không triển khai endpoint mở này trong môi trường dùng chung hoặc production.
+        Khi duyệt, hệ thống tạo liên kết thiết lập mật khẩu.
+      security: []
+      responses:
+        '200':
+          description: Đã duyệt yêu cầu và tạo liên kết thiết lập mật khẩu
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegistrationApprovalResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '403':
+          description: Endpoint không được bật ngoài APP_ENV=local
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+
+  /admin/registration-requests:
+    get:
+      tags: [Registration Requests]
+      operationId: listRegistrationRequests
+      summary: Admin xem các yêu cầu đăng ký
+      description: Chỉ ADMIN. Mặc định có thể lọc theo trạng thái PENDING và phân trang.
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/RegistrationRequestStatus' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Danh sách yêu cầu đăng ký
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegistrationRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/registration-requests/{id}/reject:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID yêu cầu đăng ký
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Registration Requests]
+      operationId: rejectRegistrationRequest
+      summary: Admin từ chối yêu cầu đăng ký
+      description: Chỉ ADMIN.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectRegistrationRequest' }
+      responses:
+        '200':
+          description: Yêu cầu đã bị từ chối
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegistrationRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Đăng nhập bằng email và mật khẩu
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Đăng nhập thành công; refresh token được gửi bằng cookie HttpOnly
+          headers:
+            Set-Cookie:
+              description: Cookie refreshToken; cấu hình Secure khi chạy HTTPS
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/set-password:
+    post:
+      tags: [Auth]
+      operationId: setPasswordFromRegistrationLink
+      summary: Thiết lập mật khẩu từ liên kết được admin gửi
+      description: Endpoint công khai; yêu cầu token thiết lập mật khẩu hợp lệ, chỉ dùng một lần và có thời hạn.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetPasswordRequest' }
+      responses:
+        '204': { description: Mật khẩu đã được thiết lập; tài khoản có thể đăng nhập }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '410':
+          description: Liên kết thiết lập mật khẩu đã hết hạn hoặc đã được sử dụng
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshAccessToken
+      summary: Cấp access token mới bằng refresh token
+      security:
+        - refreshCookie: []
+      responses:
+        '200':
+          description: Token mới
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccessTokenResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Thu hồi phiên đăng nhập hiện tại
+      security:
+        - refreshCookie: []
+      responses:
+        '204':
+          description: Đã thu hồi phiên và xóa cookie refresh token
+          headers:
+            Set-Cookie:
+              description: Cookie refreshToken đã bị xóa
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Đổi mật khẩu của tài khoản đang đăng nhập
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+      responses:
+        '204': { description: Đã đổi mật khẩu }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /users/me:
+    get:
+      tags: [Users]
+      operationId: getCurrentUser
+      summary: Xem hồ sơ tài khoản hiện tại
+      responses:
+        '200':
+          description: Hồ sơ tài khoản
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Users]
+      operationId: updateCurrentUser
+      summary: Cập nhật hồ sơ tài khoản hiện tại
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+      responses:
+        '200':
+          description: Hồ sơ đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /users:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: Admin xem tài khoản có lọc và phân trang
+      description: Chỉ ADMIN. Không trả password hash hoặc refresh token.
+      parameters:
+        - { $ref: '#/components/parameters/SearchQuery' }
+        - name: role
+          in: query
+          schema: { $ref: '#/components/schemas/UserRole' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/UserStatus' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Danh sách tài khoản
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Users]
+      operationId: createUser
+      summary: Admin tạo tài khoản
+      description: Mật khẩu tạm được băm trước khi lưu và không xuất hiện trong response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+      responses:
+        '201':
+          description: Tài khoản đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /users/{userId}:
+    parameters:
+      - { $ref: '#/components/parameters/UserId' }
+    patch:
+      tags: [Users]
+      operationId: updateUser
+      summary: Admin sửa thông tin tài khoản
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateUserRequest' }
+      responses:
+        '200':
+          description: Tài khoản đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{userId}/role:
+    parameters:
+      - { $ref: '#/components/parameters/UserId' }
+    patch:
+      tags: [Users]
+      operationId: changeUserRole
+      summary: Admin đổi vai trò tài khoản
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { $ref: '#/components/schemas/UserRole' }
+              required: [role]
+      responses:
+        '200':
+          description: Vai trò đã đổi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{userId}/status:
+    parameters:
+      - { $ref: '#/components/parameters/UserId' }
+    patch:
+      tags: [Users]
+      operationId: changeUserStatus
+      summary: Admin khóa hoặc mở khóa tài khoản
+      description: Không cho Admin tự khóa tài khoản đang dùng.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { $ref: '#/components/schemas/UserStatus' }
+              required: [status]
+      responses:
+        '200':
+          description: Trạng thái đã đổi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /children:
+    get:
+      tags: [Children]
+      operationId: listChildren
+      summary: Tìm và lọc hồ sơ trẻ
+      parameters:
+        - { $ref: '#/components/parameters/SearchQuery' }
+        - name: classId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ChildStatus' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Danh sách trẻ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChildPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Children]
+      operationId: createChild
+      summary: Tạo hồ sơ trẻ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateChildRequest' }
+      responses:
+        '201':
+          description: Hồ sơ trẻ đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Child' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /children/{childId}:
+    parameters:
+      - { $ref: '#/components/parameters/ChildId' }
+    get:
+      tags: [Children]
+      operationId: getChild
+      summary: Xem hồ sơ trẻ
+      responses:
+        '200':
+          description: Hồ sơ trẻ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Child' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Children]
+      operationId: updateChild
+      summary: Cập nhật hồ sơ hoặc chuyển lớp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateChildRequest' }
+      responses:
+        '200':
+          description: Hồ sơ đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Child' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /children/{childId}/parents:
+    parameters:
+      - { $ref: '#/components/parameters/ChildId' }
+    post:
+      tags: [Children]
+      operationId: linkParentToChild
+      summary: Liên kết tài khoản phụ huynh với trẻ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkParentRequest' }
+      responses:
+        '201':
+          description: Liên kết đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChildParentLink' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /classes:
+    get:
+      tags: [Classes]
+      operationId: listClasses
+      summary: Danh sách lớp theo năm học/trạng thái
+      parameters:
+        - name: academicYear
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ClassStatus' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Danh sách lớp
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Classes]
+      operationId: createClass
+      summary: Tạo lớp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateClassRequest' }
+      responses:
+        '201':
+          description: Lớp đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Classroom' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /classes/{classId}:
+    parameters:
+      - { $ref: '#/components/parameters/ClassId' }
+    get:
+      tags: [Classes]
+      operationId: getClass
+      summary: Xem lớp
+      responses:
+        '200':
+          description: Thông tin lớp
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Classroom' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Classes]
+      operationId: updateClass
+      summary: Sửa lớp hoặc đóng lớp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateClassRequest' }
+      responses:
+        '200':
+          description: Lớp đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Classroom' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /classes/{classId}/teachers:
+    parameters:
+      - { $ref: '#/components/parameters/ClassId' }
+    post:
+      tags: [Classes]
+      operationId: assignTeachers
+      summary: Phân công một hoặc nhiều giáo viên vào lớp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teacherUserIds:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+              required: [teacherUserIds]
+      responses:
+        '200':
+          description: Danh sách phân công hiện tại
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClassTeacherAssignment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /classes/{classId}/teachers/{teacherUserId}:
+    delete:
+      tags: [Classes]
+      operationId: removeTeacherFromClass
+      summary: Gỡ giáo viên khỏi lớp
+      parameters:
+        - { $ref: '#/components/parameters/ClassId' }
+        - name: teacherUserId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Đã gỡ phân công }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /classes/{classId}/attendance:
+    get:
+      tags: [Attendance]
+      operationId: getClassAttendance
+      summary: Xem bảng điểm danh của lớp theo ngày
+      parameters:
+        - { $ref: '#/components/parameters/ClassId' }
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Bảng điểm danh trong ngày
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Attendance' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /attendance/check-in:
+    post:
+      tags: [Attendance]
+      operationId: checkInChild
+      summary: Ghi nhận trẻ đến lớp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                childId: { type: string, format: uuid }
+              required: [childId]
+      responses:
+        '201':
+          description: Check-in đã được ghi nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attendance' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /attendance/check-out:
+    post:
+      tags: [Attendance]
+      operationId: checkOutChild
+      summary: Ghi nhận trẻ rời trường
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                childId: { type: string, format: uuid }
+              required: [childId]
+      responses:
+        '200':
+          description: Check-out đã được ghi nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attendance' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /attendance/{attendanceId}:
+    parameters:
+      - name: attendanceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Attendance]
+      operationId: updateAttendance
+      summary: Sửa bản ghi điểm danh trong ngày
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAttendanceRequest' }
+      responses:
+        '200':
+          description: Bản ghi đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attendance' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /children/{childId}/attendance/today:
+    get:
+      tags: [Attendance]
+      operationId: getChildAttendanceToday
+      summary: Xem trạng thái điểm danh hôm nay của trẻ
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+      responses:
+        '200':
+          description: Trạng thái điểm danh hôm nay
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/Attendance' }
+                  - type: 'null'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /children/{childId}/attendance:
+    get:
+      tags: [Attendance]
+      operationId: listChildAttendance
+      summary: Xem lịch sử điểm danh của trẻ
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Lịch sử điểm danh
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendancePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /leave-requests:
+    post:
+      tags: [Leave Requests]
+      operationId: createLeaveRequest
+      summary: Phụ huynh gửi yêu cầu nghỉ học
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLeaveRequest' }
+      responses:
+        '201':
+          description: Yêu cầu nghỉ đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeaveRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    get:
+      tags: [Leave Requests]
+      operationId: listLeaveRequests
+      summary: Xem yêu cầu nghỉ theo trẻ/lớp/trạng thái
+      parameters:
+        - name: childId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: classId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/LeaveRequestStatus' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Danh sách yêu cầu nghỉ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeaveRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /leave-requests/{requestId}/approve:
+    post:
+      tags: [Leave Requests]
+      operationId: approveLeaveRequest
+      summary: Giáo viên hoặc quản lý duyệt yêu cầu nghỉ
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Yêu cầu đã duyệt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeaveRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /leave-requests/{requestId}/reject:
+    post:
+      tags: [Leave Requests]
+      operationId: rejectLeaveRequest
+      summary: Giáo viên hoặc quản lý từ chối yêu cầu nghỉ
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, minLength: 1 }
+              required: [reason]
+      responses:
+        '200':
+          description: Yêu cầu đã từ chối
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeaveRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /children/{childId}/health-records:
+    get:
+      tags: [Health Records]
+      operationId: listChildHealthRecords
+      summary: Xem lịch sử hồ sơ sức khỏe
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Lịch sử sức khỏe được lọc theo quyền của người gọi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthRecordPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Health Records]
+      operationId: createChildHealthRecord
+      summary: Nhân viên y tế ghi số đo sức khỏe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateHealthRecordRequest' }
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+      responses:
+        '201':
+          description: Hồ sơ sức khỏe đã được ghi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /health-records/{recordId}:
+    patch:
+      tags: [Health Records]
+      operationId: updateHealthRecord
+      summary: Nhân viên y tế sửa hồ sơ sức khỏe
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateHealthRecordRequest' }
+      responses:
+        '200':
+          description: Hồ sơ đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /children/{childId}/health-summary:
+    get:
+      tags: [Health Records]
+      operationId: getChildHealthSummary
+      summary: Xem tóm tắt sức khỏe đã lọc theo role
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+      responses:
+        '200':
+          description: Tóm tắt sức khỏe phù hợp quyền truy cập
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /children/{childId}/vaccinations:
+    get:
+      tags: [Health Records]
+      operationId: listVaccinations
+      summary: Danh sách tiêm chủng của trẻ
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+      responses:
+        '200':
+          description: Danh sách mũi tiêm
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Vaccination' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Health Records]
+      operationId: createVaccination
+      summary: Ghi nhận mũi tiêm
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateVaccinationRequest' }
+      responses:
+        '201':
+          description: Mũi tiêm đã ghi nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vaccination' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /children/{childId}/medical-visits:
+    get:
+      tags: [Health Records]
+      operationId: listMedicalVisits
+      summary: Danh sách lần khám của trẻ
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+      responses:
+        '200':
+          description: Danh sách lần khám
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MedicalVisit' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Health Records]
+      operationId: createMedicalVisit
+      summary: Ghi nhận lần khám
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMedicalVisitRequest' }
+      responses:
+        '201':
+          description: Lần khám đã được ghi nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalVisit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /classes/{classId}/health-alerts:
+    get:
+      tags: [Health Records]
+      operationId: listClassHealthAlerts
+      summary: Giáo viên xem cảnh báo dị ứng cần thiết của lớp
+      parameters:
+        - { $ref: '#/components/parameters/ClassId' }
+      responses:
+        '200':
+          description: Danh sách cảnh báo tối thiểu theo quyền
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/HealthAlert' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /activities:
+    get:
+      tags: [Activities]
+      operationId: listActivities
+      summary: Danh sách hoạt động theo lớp/ngày
+      parameters:
+        - name: classId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Danh sách hoạt động
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActivityPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Activities]
+      operationId: createActivity
+      summary: Giáo viên tạo hoạt động và chọn trẻ tham gia
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateActivityRequest' }
+      responses:
+        '201':
+          description: Hoạt động đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Activity' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /activities/{activityId}/participants:
+    post:
+      tags: [Activities]
+      operationId: addActivityParticipants
+      summary: Ghi nhận trẻ tham gia hoạt động
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                participants:
+                  type: array
+                  items: { $ref: '#/components/schemas/ActivityParticipantInput' }
+              required: [participants]
+      responses:
+        '200':
+          description: Danh sách người tham gia đã cập nhật
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ActivityParticipant' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /activities/{activityId}/images:
+    post:
+      tags: [Activities]
+      operationId: uploadActivityImage
+      summary: Tải ảnh hoạt động lên object storage
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required: [file]
+      responses:
+        '201':
+          description: Ảnh đã tải; database chỉ lưu metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActivityImage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+
+  /children/{childId}/activities:
+    get:
+      tags: [Activities]
+      operationId: listChildActivities
+      summary: Phụ huynh xem hoạt động của trẻ đã liên kết
+      parameters:
+        - { $ref: '#/components/parameters/ChildId' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Hoạt động của trẻ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActivityPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /pickup-requests:
+    get:
+      tags: [Pickup]
+      operationId: listPickupRequests
+      summary: Xem yêu cầu đón trẻ theo lớp/ngày/trạng thái
+      parameters:
+        - name: classId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/PickupStatus' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Danh sách yêu cầu đón
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Pickup]
+      operationId: createPickupRequest
+      summary: Phụ huynh đăng ký người đón trẻ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePickupRequest' }
+      responses:
+        '201':
+          description: Yêu cầu được tạo với trạng thái PENDING
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /pickup-requests/{requestId}/cancel:
+    patch:
+      tags: [Pickup]
+      operationId: cancelPickupRequest
+      summary: Phụ huynh hủy yêu cầu còn PENDING
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Yêu cầu đã hủy
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /pickup-requests/{requestId}/approve:
+    patch:
+      tags: [Pickup]
+      operationId: approvePickupRequest
+      summary: Giáo viên duyệt yêu cầu đón
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Yêu cầu đã duyệt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /pickup-requests/{requestId}/reject:
+    patch:
+      tags: [Pickup]
+      operationId: rejectPickupRequest
+      summary: Giáo viên từ chối yêu cầu đón
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, minLength: 1 }
+              required: [reason]
+      responses:
+        '200':
+          description: Yêu cầu đã từ chối
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /pickup-requests/{requestId}/complete:
+    patch:
+      tags: [Pickup]
+      operationId: completePickupRequest
+      summary: Xác nhận đã giao trẻ và hoàn tất check-out
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Yêu cầu hoàn tất
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickupRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: Người dùng xem thông báo của mình
+      parameters:
+        - name: unreadOnly
+          in: query
+          schema: { type: boolean, default: false }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Danh sách thông báo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /notifications/unread-count:
+    get:
+      tags: [Notifications]
+      operationId: getUnreadNotificationCount
+      summary: Đếm thông báo chưa đọc của người dùng hiện tại
+      responses:
+        '200':
+          description: Số thông báo chưa đọc
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unreadCount: { type: integer, minimum: 0 }
+                required: [unreadCount]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /notifications/{notificationId}/read:
+    patch:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      summary: Đánh dấu thông báo của mình đã đọc
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Thông báo đã đọc
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /notifications/broadcast:
+    post:
+      tags: [Notifications]
+      operationId: broadcastNotification
+      summary: Giáo viên gửi thông báo cho lớp hoặc nhóm trẻ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BroadcastNotificationRequest' }
+      responses:
+        '201':
+          description: Thông báo đã tạo cho người nhận
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recipientCount: { type: integer, minimum: 0 }
+                  notificationCount: { type: integer, minimum: 0 }
+                required: [recipientCount, notificationCount]
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /reports/attendance:
+    get:
+      tags: [Reports]
+      operationId: getAttendanceReport
+      summary: Báo cáo điểm danh và chuyên cần
+      parameters:
+        - { $ref: '#/components/parameters/ClassIdQuery' }
+        - { $ref: '#/components/parameters/FromDate' }
+        - { $ref: '#/components/parameters/ToDate' }
+      responses:
+        '200':
+          description: Số liệu điểm danh tổng hợp
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendanceReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /reports/classes:
+    get:
+      tags: [Reports]
+      operationId: getClassReport
+      summary: Báo cáo tổng hợp theo lớp
+      parameters:
+        - { $ref: '#/components/parameters/FromDate' }
+        - { $ref: '#/components/parameters/ToDate' }
+      responses:
+        '200':
+          description: Số liệu theo lớp
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClassReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /reports/health:
+    get:
+      tags: [Reports]
+      operationId: getHealthReport
+      summary: Báo cáo sức khỏe tổng hợp
+      parameters:
+        - { $ref: '#/components/parameters/ClassIdQuery' }
+        - { $ref: '#/components/parameters/FromDate' }
+        - { $ref: '#/components/parameters/ToDate' }
+      responses:
+        '200':
+          description: Số liệu sức khỏe đã tổng hợp theo quyền
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: refreshToken
+
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ChildId:
+      name: childId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ClassId:
+      name: classId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ClassIdQuery:
+      name: classId
+      in: query
+      schema: { type: string, format: uuid }
+    SearchQuery:
+      name: query
+      in: query
+      description: Tìm gần đúng theo tên/email phù hợp với resource
+      schema: { type: string, maxLength: 100 }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    FromDate:
+      name: from
+      in: query
+      required: true
+      schema: { type: string, format: date }
+    ToDate:
+      name: to
+      in: query
+      required: true
+      schema: { type: string, format: date }
+
+  responses:
+    BadRequest:
+      description: Dữ liệu đầu vào không hợp lệ
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Unauthorized:
+      description: Chưa đăng nhập hoặc token không hợp lệ
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Forbidden:
+      description: Đã đăng nhập nhưng không đủ quyền/phạm vi dữ liệu
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotFound:
+      description: Không tìm thấy tài nguyên
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Conflict:
+      description: Xung đột trạng thái hoặc tài nguyên đã tồn tại
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    TooManyRequests:
+      description: Vượt giới hạn request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    PayloadTooLarge:
+      description: File vượt dung lượng cho phép
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    ServiceUnavailable:
+      description: Backend hoặc database chưa sẵn sàng
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+
+  schemas:
+    UserRole:
+      type: string
+      enum: [ADMIN, MANAGER, TEACHER, MEDICAL_STAFF, PARENT]
+    UserStatus:
+      type: string
+      enum: [ACTIVE, LOCKED, INACTIVE]
+    RegistrationRequestStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED]
+    ChildStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, WITHDRAWN]
+    ClassStatus:
+      type: string
+      enum: [ACTIVE, CLOSED]
+    AttendanceStatus:
+      type: string
+      enum: [PRESENT, ABSENT, LATE, EARLY_LEAVE]
+    LeaveRequestStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+    PickupStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, COMPLETED, CANCELLED]
+    Relationship:
+      type: string
+      enum: [FATHER, MOTHER, GUARDIAN]
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        phone: { type: [string, 'null'] }
+        role: { $ref: '#/components/schemas/UserRole' }
+        status: { $ref: '#/components/schemas/UserStatus' }
+        createdAt: { type: string, format: date-time }
+      required: [id, email, fullName, role, status, createdAt]
+
+    RegistrationRequest:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/RegistrationRequestStatus' }
+        rejectionReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+      required: [id, fullName, email, status, createdAt]
+
+    RegistrationRequestCreated:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/RegistrationRequestStatus' }
+      required: [id, status]
+
+    RegistrationApprovalResponse:
+      type: object
+      description: Liên kết thiết lập mật khẩu chỉ trả trong môi trường local.
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/RegistrationRequestStatus' }
+        setupPasswordUrl: { type: string, format: uri }
+      required: [id, status, setupPasswordUrl]
+
+    RejectRegistrationRequest:
+      type: object
+      properties:
+        reason: { type: string, maxLength: 500 }
+
+    RegistrationRequestPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/RegistrationRequest' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, page]
+
+    RegisterRequest:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 150 }
+        email: { type: string, format: email, maxLength: 254 }
+        phone: { type: string, maxLength: 30 }
+      required: [fullName, email]
+
+    SetPasswordRequest:
+      type: object
+      properties:
+        setupToken: { type: string, minLength: 20 }
+        password: { type: string, format: password, minLength: 8, maxLength: 128 }
+        confirmPassword: { type: string, format: password, minLength: 8, maxLength: 128 }
+      required: [setupToken, password, confirmPassword]
+
+    LoginRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+      required: [email, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, const: Bearer }
+        expiresIn: { type: integer, description: Thời hạn access token tính bằng giây }
+        user: { $ref: '#/components/schemas/User' }
+      required: [accessToken, tokenType, expiresIn, user]
+
+    AccessTokenResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, const: Bearer }
+        expiresIn: { type: integer }
+      required: [accessToken, tokenType, expiresIn]
+
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword: { type: string, format: password }
+        newPassword: { type: string, format: password, minLength: 8, maxLength: 128 }
+      required: [currentPassword, newPassword]
+
+    CreateUserRequest:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 150 }
+        email: { type: string, format: email }
+        phone: { type: string, maxLength: 30 }
+        temporaryPassword: { type: string, format: password, minLength: 8, maxLength: 128 }
+        role: { $ref: '#/components/schemas/UserRole' }
+      required: [fullName, email, temporaryPassword, role]
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 150 }
+        phone: { type: [string, 'null'], maxLength: 30 }
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 150 }
+        phone: { type: [string, 'null'], maxLength: 30 }
+
+    PageInfo:
+      type: object
+      properties:
+        page: { type: integer, minimum: 1 }
+        limit: { type: integer, minimum: 1 }
+        totalItems: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+      required: [page, limit, totalItems, totalPages]
+
+    UserPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/User' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    Classroom:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        academicYear: { type: string }
+        status: { $ref: '#/components/schemas/ClassStatus' }
+        teacherUserIds:
+          type: array
+          items: { type: string, format: uuid }
+      required: [id, name, academicYear, status]
+
+    CreateClassRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        academicYear: { type: string, minLength: 4, maxLength: 20 }
+      required: [name, academicYear]
+
+    UpdateClassRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        academicYear: { type: string, minLength: 4, maxLength: 20 }
+        status: { $ref: '#/components/schemas/ClassStatus' }
+
+    ClassTeacherAssignment:
+      type: object
+      properties:
+        classId: { type: string, format: uuid }
+        teacherUserId: { type: string, format: uuid }
+      required: [classId, teacherUserId]
+
+    ClassPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Classroom' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    Child:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        dateOfBirth: { type: string, format: date }
+        gender: { type: string, enum: [MALE, FEMALE, OTHER] }
+        address: { type: [string, 'null'] }
+        avatarUrl: { type: [string, 'null'], format: uri }
+        classId: { type: [string, 'null'], format: uuid }
+        status: { $ref: '#/components/schemas/ChildStatus' }
+        parentUserIds:
+          type: array
+          items: { type: string, format: uuid }
+      required: [id, name, dateOfBirth, gender, status]
+
+    CreateChildRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 150 }
+        dateOfBirth: { type: string, format: date }
+        gender: { type: string, enum: [MALE, FEMALE, OTHER] }
+        address: { type: string, maxLength: 500 }
+        classId: { type: string, format: uuid }
+      required: [name, dateOfBirth, gender, classId]
+
+    UpdateChildRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 150 }
+        dateOfBirth: { type: string, format: date }
+        gender: { type: string, enum: [MALE, FEMALE, OTHER] }
+        address: { type: [string, 'null'], maxLength: 500 }
+        classId: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/ChildStatus' }
+
+    LinkParentRequest:
+      type: object
+      properties:
+        parentUserId: { type: string, format: uuid }
+        relationship: { $ref: '#/components/schemas/Relationship' }
+      required: [parentUserId, relationship]
+
+    ChildParentLink:
+      type: object
+      properties:
+        childId: { type: string, format: uuid }
+        parentUserId: { type: string, format: uuid }
+        relationship: { $ref: '#/components/schemas/Relationship' }
+      required: [childId, parentUserId, relationship]
+
+    ChildPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Child' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    Attendance:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        childId: { type: string, format: uuid }
+        date: { type: string, format: date }
+        checkInTime: { type: [string, 'null'], format: date-time }
+        checkOutTime: { type: [string, 'null'], format: date-time }
+        status: { $ref: '#/components/schemas/AttendanceStatus' }
+        recordedByUserId: { type: string, format: uuid }
+      required: [id, childId, date, status, recordedByUserId]
+
+    UpdateAttendanceRequest:
+      type: object
+      properties:
+        status: { $ref: '#/components/schemas/AttendanceStatus' }
+        checkInTime: { type: [string, 'null'], format: date-time }
+        checkOutTime: { type: [string, 'null'], format: date-time }
+
+    AttendancePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Attendance' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    CreateLeaveRequest:
+      type: object
+      properties:
+        childId: { type: string, format: uuid }
+        fromDate: { type: string, format: date }
+        toDate: { type: string, format: date }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+      required: [childId, fromDate, toDate, reason]
+
+    LeaveRequest:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        childId: { type: string, format: uuid }
+        parentUserId: { type: string, format: uuid }
+        fromDate: { type: string, format: date }
+        toDate: { type: string, format: date }
+        reason: { type: string }
+        status: { $ref: '#/components/schemas/LeaveRequestStatus' }
+      required: [id, childId, parentUserId, fromDate, toDate, reason, status]
+
+    LeaveRequestPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/LeaveRequest' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    CreateHealthRecordRequest:
+      type: object
+      properties:
+        height: { type: number, format: float, exclusiveMinimum: 0 }
+        weight: { type: number, format: float, exclusiveMinimum: 0 }
+        temperature: { type: number, format: float, exclusiveMinimum: 0 }
+        note: { type: string, maxLength: 2000 }
+
+    UpdateHealthRecordRequest:
+      $ref: '#/components/schemas/CreateHealthRecordRequest'
+
+    HealthRecord:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        childId: { type: string, format: uuid }
+        height: { type: [number, 'null'], format: float }
+        weight: { type: [number, 'null'], format: float }
+        temperature: { type: [number, 'null'], format: float }
+        note: { type: [string, 'null'] }
+        recordedAt: { type: string, format: date-time }
+      required: [id, childId, recordedAt]
+
+    HealthRecordPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/HealthRecord' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    HealthSummary:
+      type: object
+      properties:
+        childId: { type: string, format: uuid }
+        latestRecord: { oneOf: [{ $ref: '#/components/schemas/HealthRecord' }, { type: 'null' }] }
+        allergies:
+          type: array
+          items: { $ref: '#/components/schemas/Allergy' }
+        medicalConditions:
+          type: array
+          items: { $ref: '#/components/schemas/MedicalCondition' }
+      required: [childId, allergies, medicalConditions]
+
+    Allergy:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        allergen: { type: string }
+        severity: { type: string }
+      required: [id, allergen, severity]
+
+    MedicalCondition:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        note: { type: [string, 'null'] }
+      required: [id, name]
+
+    CreateVaccinationRequest:
+      type: object
+      properties:
+        vaccineName: { type: string, minLength: 1 }
+        doseNumber: { type: integer, minimum: 1 }
+        vaccinatedAt: { type: string, format: date }
+      required: [vaccineName, doseNumber, vaccinatedAt]
+
+    Vaccination:
+      allOf:
+        - $ref: '#/components/schemas/CreateVaccinationRequest'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+            childId: { type: string, format: uuid }
+          required: [id, childId]
+
+    CreateMedicalVisitRequest:
+      type: object
+      properties:
+        visitedAt: { type: string, format: date-time }
+        symptoms: { type: string, maxLength: 2000 }
+        conclusion: { type: string, maxLength: 2000 }
+        medications:
+          type: array
+          items: { $ref: '#/components/schemas/MedicationInput' }
+      required: [visitedAt]
+
+    MedicationInput:
+      type: object
+      properties:
+        name: { type: string }
+        dosage: { type: string }
+        schedule: { type: string }
+      required: [name, dosage, schedule]
+
+    MedicalVisit:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        childId: { type: string, format: uuid }
+        visitedAt: { type: string, format: date-time }
+        symptoms: { type: [string, 'null'] }
+        conclusion: { type: [string, 'null'] }
+        medications:
+          type: array
+          items: { $ref: '#/components/schemas/MedicationInput' }
+      required: [id, childId, visitedAt, medications]
+
+    HealthAlert:
+      type: object
+      properties:
+        childId: { type: string, format: uuid }
+        childName: { type: string }
+        allergen: { type: string }
+        severity: { type: string }
+      required: [childId, childName, allergen]
+
+    CreateActivityRequest:
+      type: object
+      properties:
+        classId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 5000 }
+        date: { type: string, format: date }
+        participants:
+          type: array
+          items: { $ref: '#/components/schemas/ActivityParticipantInput' }
+      required: [classId, title, date]
+
+    ActivityParticipantInput:
+      type: object
+      properties:
+        childId: { type: string, format: uuid }
+        participationStatus:
+          type: string
+          enum: [JOINED, NOT_JOINED]
+      required: [childId, participationStatus]
+
+    ActivityParticipant:
+      allOf:
+        - $ref: '#/components/schemas/ActivityParticipantInput'
+        - type: object
+          properties:
+            activityId: { type: string, format: uuid }
+          required: [activityId]
+
+    Activity:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        classId: { type: string, format: uuid }
+        createdByTeacherUserId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        date: { type: string, format: date }
+        participants:
+          type: array
+          items: { $ref: '#/components/schemas/ActivityParticipant' }
+        images:
+          type: array
+          items: { $ref: '#/components/schemas/ActivityImage' }
+      required: [id, classId, title, date]
+
+    ActivityImage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        objectKey: { type: string }
+        url: { type: string, format: uri }
+      required: [id, objectKey, url]
+
+    ActivityPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Activity' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    CreatePickupRequest:
+      type: object
+      properties:
+        childId: { type: string, format: uuid }
+        pickupPerson: { type: string, minLength: 1, maxLength: 150 }
+        relationship: { type: string, maxLength: 50 }
+        idNumber: { type: string, maxLength: 50 }
+        phone: { type: string, maxLength: 30 }
+        expectedTime: { type: string, format: date-time }
+      required: [childId, pickupPerson, relationship, expectedTime]
+
+    PickupRequest:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        childId: { type: string, format: uuid }
+        pickupPerson: { type: string }
+        relationship: { type: string }
+        expectedTime: { type: string, format: date-time }
+        status: { $ref: '#/components/schemas/PickupStatus' }
+        verifiedByTeacherUserId: { type: [string, 'null'], format: uuid }
+      required: [id, childId, pickupPerson, relationship, expectedTime, status]
+
+    PickupRequestPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PickupRequest' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        content: { type: string }
+        channel: { type: string, enum: [IN_APP, PUSH_NOTIFICATION, EMAIL, SMS] }
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }
+      required: [id, title, content, channel, isRead, createdAt]
+
+    NotificationPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Notification' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    BroadcastNotificationRequest:
+      type: object
+      properties:
+        classId: { type: string, format: uuid }
+        childIds:
+          type: array
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        content: { type: string, minLength: 1, maxLength: 5000 }
+      required: [title, content]
+      oneOf:
+        - required: [classId]
+        - required: [childIds]
+
+    AttendanceReport:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        totalChildren: { type: integer, minimum: 0 }
+        presentCount: { type: integer, minimum: 0 }
+        lateCount: { type: integer, minimum: 0 }
+        earlyLeaveCount: { type: integer, minimum: 0 }
+        attendanceRate: { type: number, minimum: 0, maximum: 1 }
+      required: [from, to, totalChildren, presentCount, attendanceRate]
+
+    ClassReport:
+      type: object
+      properties:
+        classId: { type: string, format: uuid }
+        className: { type: string }
+        childCount: { type: integer, minimum: 0 }
+        attendanceRate: { type: number, minimum: 0, maximum: 1 }
+        activityCount: { type: integer, minimum: 0 }
+      required: [classId, className]
+
+    HealthReport:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        childrenWithAllergy: { type: integer, minimum: 0 }
+        childrenWithCondition: { type: integer, minimum: 0 }
+        vaccinationRate: { type: number, minimum: 0, maximum: 1 }
+      required: [from, to]
+
+    ApiError:
+      type: object
+      properties:
+        statusCode: { type: integer }
+        code: { type: string }
+        message:
+          oneOf:
+            - { type: string }
+            - type: array
+              items: { type: string }
+        timestamp: { type: string, format: date-time }
+        path: { type: string }
+      required: [statusCode, message]
