@@ -20,9 +20,9 @@ export default function Login() {
 
   const validate = () => {
     const errs = {}
-    if (!email.trim()) errs.email = 'Enter your email'
-    else if (!EMAIL_RE.test(email)) errs.email = 'Enter a valid email address'
-    if (!password) errs.password = 'Enter your password'
+    if (!email.trim()) errs.email = 'Nhập email'
+    else if (!EMAIL_RE.test(email)) errs.email = 'Email không hợp lệ'
+    if (!password) errs.password = 'Nhập mật khẩu'
     setFieldErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -31,10 +31,10 @@ export default function Login() {
     e.preventDefault()
     setError('')
 
-    // 2b. Temporary lock after too many failed attempts
+    // 2b. Khóa tạm thời khi nhập sai quá nhiều lần
     const remain = Math.ceil((lockedUntil - Date.now()) / 1000)
     if (remain > 0) {
-      setError(`Too many failed attempts. Try again in ${remain} seconds.`)
+      setError(`Bạn đã nhập sai quá nhiều lần. Thử lại sau ${remain} giây.`)
       return
     }
     if (!validate()) return
@@ -43,7 +43,7 @@ export default function Login() {
     try {
       const session = await login(email.trim(), password)
       saveSession(session)
-      // Main flow 3-4: redirect to the home page for the user's role
+      // Luồng chính 3-4: chuyển tới trang chủ theo vai trò
       navigate(ROLES[session.user.role].home, { replace: true })
     } catch (err) {
       if (err.code === 'INVALID_CREDENTIALS') {
@@ -52,13 +52,13 @@ export default function Login() {
         if (next >= MAX_ATTEMPTS) {
           setLockedUntil(Date.now() + LOCK_SECONDS * 1000)
           setAttempts(0)
-          setError(`${MAX_ATTEMPTS} failed attempts in a row. Sign in is locked for ${LOCK_SECONDS} seconds.`)
+          setError(`Sai ${MAX_ATTEMPTS} lần liên tiếp. Đăng nhập bị khóa trong ${LOCK_SECONDS} giây.`)
         } else {
-          setError('Incorrect email or password. Check your details, or register if you don\u2019t have an account.')
+          setError('Email hoặc mật khẩu không đúng. Kiểm tra lại thông tin, hoặc đăng ký nếu bạn chưa có tài khoản.')
         }
       } else {
-        // 2c. Pending approval / disabled account
-        setError(err.message || 'Unable to sign in. Please try again later.')
+        // 2c. Chờ duyệt / tài khoản bị khóa
+        setError(err.message || 'Không thể đăng nhập. Vui lòng thử lại sau.')
       }
     } finally {
       setLoading(false)
@@ -69,11 +69,11 @@ export default function Login() {
     <div className="login-page">
       <aside className="login-aside" aria-hidden="true">
         <div className="aside-inner">
-          <h2>One place for the whole school</h2>
-          <p>Parents, teachers, medical staff and facility managers track children&rsquo;s health and daily activities together.</p>
+          <h2>Một nơi chung cho cả trường</h2>
+          <p>Phụ huynh, giáo viên, nhân viên y tế và quản lý cơ sở cùng theo dõi sức khỏe và hoạt động hằng ngày của trẻ.</p>
           <ul className="role-list">
-            {Object.values(ROLES).filter((r) => r.label !== 'Admin').map((r) => (
-              <li key={r.label}>{r.label}</li>
+            {Object.entries(ROLES).filter(([key]) => key !== 'admin').map(([key, r]) => (
+              <li key={key}>{r.label}</li>
             ))}
           </ul>
         </div>
@@ -81,8 +81,8 @@ export default function Login() {
 
       <main className="login-main">
         <form className="login-card" onSubmit={handleSubmit} noValidate>
-          <h1>Sign in</h1>
-          <p className="sub">Use the email and password you registered with.</p>
+          <h1>Đăng nhập</h1>
+          <p className="sub">Dùng email và mật khẩu bạn đã đăng ký.</p>
 
           {notice && !error && <div className="notice" role="status">{notice}</div>}
           {error && <div className="alert" role="alert">{error}</div>}
@@ -99,7 +99,7 @@ export default function Login() {
           </div>
 
           <div className="field">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">Mật khẩu</label>
             <div className="pw-wrap">
               <input
                 id="password" type={showPw ? 'text' : 'password'} autoComplete="current-password"
@@ -108,21 +108,21 @@ export default function Login() {
                 aria-describedby={fieldErrors.password ? 'pw-err' : undefined}
               />
               <button type="button" className="pw-toggle" onClick={() => setShowPw((v) => !v)}>
-                {showPw ? 'Hide' : 'Show'}
+                {showPw ? 'Ẩn' : 'Hiện'}
               </button>
             </div>
             {fieldErrors.password && <span id="pw-err" className="field-err">{fieldErrors.password}</span>}
           </div>
 
           <div className="row-end">
-            <Link to="/forgot-password">Forgot password?</Link>
+            <Link to="/forgot-password">Quên mật khẩu?</Link>
           </div>
 
           <button className="btn" type="submit" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
 
-          <p className="switch">Don&rsquo;t have an account? <Link to="/register">Register</Link></p>
+          <p className="switch">Chưa có tài khoản? <Link to="/register">Đăng ký</Link></p>
         </form>
       </main>
     </div>
