@@ -1,11 +1,10 @@
 import 'dotenv/config';
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './database/database.module';
+import { HealthModule } from './health/health.module';
+import { RegistrationRequestsModule } from './registration-requests/registration-requests.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -13,8 +12,7 @@ import { DatabaseModule } from './database/database.module';
     AuthModule,
     UsersModule,
     HealthModule,
+    RegistrationRequestsModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}
