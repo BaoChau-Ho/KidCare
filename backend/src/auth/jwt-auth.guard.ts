@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { isUUID } from 'class-validator';
 import type { Request } from 'express';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
@@ -36,13 +37,13 @@ export class JwtAuthGuard implements CanActivate {
       });
     }
 
-    let payload: { sub: number };
+    let payload: { sub: string };
 
     try {
-      payload = await this.jwtService.verifyAsync<{ sub: number }>(token);
+      payload = await this.jwtService.verifyAsync<{ sub: string }>(token);
 
-      if (!Number.isInteger(payload.sub)) {
-        throw new Error('JWT thiếu user id');
+      if (typeof payload.sub !== 'string' || !isUUID(payload.sub)) {
+        throw new Error('JWT thiếu user UUID');
       }
     } catch {
       throw new UnauthorizedException({
