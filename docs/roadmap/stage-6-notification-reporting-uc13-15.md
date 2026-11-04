@@ -1,26 +1,18 @@
-# Stage 6 ? Th?ng b?o v? b?o c?o (UC-13, UC-14, UC-15)
+# Stage 6 — Thông báo và báo cáo (UC-13–15)
 
-## M?c ti?u v? ph? thu?c
+## Tình trạng hiện tại
 
-Ho?n thi?n inbox th?ng b?o v? b?o c?o qu?n l?. Notification c?ng nh?n event t? attendance, s?c kh?e, activity v? pickup; reporting ??c d? li?u t? c?c stage tr??c.
+Chưa có notification/reporting entity hoặc module trong backend. OpenAPI đã mô tả các endpoint dự kiến. Báo cáo phụ thuộc dữ liệu Stage 3–5; notification nhận sự kiện từ attendance, health, activity và pickup.
 
-## Backend
+## Bước triển khai
 
-1. T?o `Notification` g?m recipient, sender (nullable cho system), type, title/body, related resource, created/read timestamps.
-2. GET danh s?ch ph?n trang, unread count, mark-read; recipient lu?n l?y t? JWT, kh?ng tin recipient id client g?i.
-3. POST broadcast ch? cho gi?o vi?n l?p ???c ph?n c?ng; resolve ph? huynh qua child-parent, tr?nh duplicate recipients.
-4. T?ch h?p event ph?t sinh t? attendance/health/activity/pickup. V?i MVP c? th? t?o notification trong transaction; n?u c?n ?? tin c?y cao, c?n nh?c outbox ? giai ?o?n sau.
-5. T?o b?o c?o attendance/classes/health t?ng h?p t? b?ng ngu?n, validate date range v? filter theo quy?n manager.
-6. Th?m index theo recipient/read/created time v? c?c c?t b?o c?o; tr?nh t?i d? li?u kh?ng c?n thi?t.
+1. Tạo `Notification` với recipient, sender (nullable cho system), type, title/body, related resource, created/read timestamps.
+2. Tạo inbox phân trang, unread count và mark-read; recipient luôn lấy từ JWT.
+3. Broadcast cho phụ huynh cả lớp/nhóm trẻ; xác minh assignment và child-parent trên server.
+4. Kết nối notification event từ các module trước. Với MVP có thể ghi trong transaction; đánh giá outbox nếu cần đảm bảo gửi tin cậy.
+5. Tạo report attendance/classes/health bằng truy vấn aggregate; validate ngày và phạm vi manager.
+6. Tạo index theo recipient/read/time và filter báo cáo; thêm UI inbox/báo cáo.
 
-## Frontend
+## Điều kiện hoàn tất
 
-- Notification bell, unread count, inbox ph?n trang v? mark read.
-- M?n h?nh b?o c?o c? b? l?c l?p/kho?ng ng?y, b?ng/bi?u ?? v? empty state.
-
-## Definition of Done
-
-- Kh?ng ??c ???c th?ng b?o c?a ng??i kh?c; unread count kh?p.
-- Broadcast t?i ??ng ng??i nh?n v? ch?n gi?o vi?n l?p ngo?i ph?m vi.
-- B?o c?o ??i chi?u ???c v?i d? li?u ngu?n; ng?y kh?ng h?p l? v? user kh?ng ?? quy?n b? ch?n.
-- OpenAPI, migration, tests, CI v? README c?p nh?t.
+Không đọc được thông báo user khác; unread count đúng; broadcast đúng người nhận; report khớp dữ liệu nguồn; quyền và ngày lọc được validate.

@@ -12,6 +12,16 @@ Các stage sắp xếp theo phụ thuộc dữ liệu và chức năng. Mỗi ro
 | 6 | Thông báo và báo cáo — UC-13–15 | [stage-6-notification-reporting-uc13-15.md](stage-6-notification-reporting-uc13-15.md) |
 | 7 | Kiểm thử, ổn định, triển khai | [stage-7-testing-deployment.md](stage-7-testing-deployment.md) |
 
+
+## Trạng thái repo hiện tại
+
+- **Stage 1 — Đang hoàn thiện:** login, JWT/Admin guards, đăng ký/duyệt và UI cơ bản đã có; logout/revocation và đồng bộ OpenAPI-flow đăng ký còn cần chốt.
+- **Stage 2 — Đang triển khai:** User entity/profile migration, chuyển User ID sang UUID và auth nền đã có; API quản trị, audit log, lớp và trẻ chưa có. Cần xác nhận trạng thái migration trên DB.
+- **Stage 3–6 — Chưa bắt đầu:** chưa có module nghiệp vụ tương ứng trong backend.
+- **Stage 7 — Hạ tầng một phần đã có:** Dockerfiles, Compose và CI workflow tồn tại; backend test scripts/backend `.dockerignore` còn thiếu, CI chưa được xác nhận chạy xanh.
+
+Trạng thái này phản ánh file hiện có trong repository; migration cần được đối chiếu với database đang chạy trước khi xem là đã áp dụng.
+
 Danh mục use case: [docs/01-requirements/use-cases/README.md](../01-requirements/use-cases/README.md).
 
 > Thứ tự là đề xuất triển khai cho MVP. Các chức năng nhạy cảm (đặc biệt sức khỏe, người đón và quyền xem dữ liệu trẻ) cần được rà soát cùng nhóm trước khi đưa lên môi trường dùng chung.

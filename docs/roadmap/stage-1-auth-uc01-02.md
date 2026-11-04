@@ -1,28 +1,32 @@
-# Stage 1 ? Authentication v? ??ng k? (UC-01, UC-02)
+# Stage 1 — Authentication và đăng ký (UC-01, UC-02)
 
-## M?c ti?u
+## Mục tiêu
 
-C? th? ??ng nh?p/??ng xu?t an to?n, x?c ??nh role, v? ho?n th?nh quy tr?nh t?o t?i kho?n ph? huynh. ??y l? n?n t?ng cho m?i route Stage 2 tr? ?i.
+Xác thực người dùng, tạo access token, quản lý yêu cầu đăng ký phụ huynh và giới hạn API theo trạng thái/role.
 
-## Ph? thu?c v? quy?t ??nh c?n ch?t
+## Tình trạng hiện tại trong repo
 
-- Ch?t c? ch? session: JWT access token v? c?ch l?u/thu h?i refresh token.
-- Ch?t UC-02: t?i li?u use case ngu?n cho ph?p t?o PARENT tr?c ti?p; OpenAPI hi?n m? t? g?i y?u c?u ch? admin duy?t r?i thi?t l?p m?t kh?u. Kh?ng tri?n khai hai lu?ng c?ng l?c khi ch?a th?ng nh?t.
-- Ch?t ki?u ID: entity User hi?n d?ng `number`/SERIAL; ERD/OpenAPI m? t? UUID.
-- C?n c? seed admin an to?n cho development n?u flow duy?t ??ng k? d?ng admin.
+Đã có login bằng Argon2, JWT guard, AdminGuard, `GET /auth/me`, đăng ký tạo user/request trạng thái `pending`, admin xem/duyệt/từ chối yêu cầu, kiểm tra link và đặt mật khẩu. Có seed admin ở `backend/src/users/seed-admin.ts`; frontend có trang login/register/set-password/admin requests. Các migration registration request, user profile và `ChangeUserIdToUuid` đã có trong `backend/src/database/migrations/`. `User.id` và JWT guard hiện dùng UUID; `registration_requests.id` vẫn là SERIAL và controller vẫn dùng ParseIntPipe.
 
-## B??c tri?n khai
+Chưa hoàn tất/đang lệch giữa các lớp:
 
-1. **Database:** m? r?ng User v?i `fullName`, `role`, `status`, contact fields; th?m b?ng session/refresh token ho?c c? ch? thu h?i ?? ch?n. T?o migration m?i, kh?ng s?a migration ?? ch?y.
-2. **Backend auth:** trong `backend/src/auth/`, t?o DTO, service, controller, strategy/guard; hash password; login ch? ch?p nh?n ACTIVE; tr? l?i chung khi email/m?t kh?u sai.
-3. **??ng k?:** tri?n khai `POST /auth/register`; role PARENT do server g?n. N?u c?n duy?t, th?m registration request, admin approval/reject v? token thi?t l?p m?t kh?u d?ng m?t l?n, c? h?n.
-4. **B?o v? API:** th?m `JwtAuthGuard`, `RolesGuard`, decorator role; public routes ph?i khai b?o r?.
-5. **Frontend:** trang ??ng nh?p/??ng k? v? l?u phi?n theo quy?t ??nh b?o m?t; ?i?u h??ng dashboard theo role.
-6. **T?i li?u:** c?p nh?t OpenAPI, README v? flow ??ng k? ?? ch?t.
+- Chưa có API logout/thu hồi token; giao diện logout chỉ xóa sessionStorage, token server vẫn sống đến khi hết hạn.
+- Migration UUID tạo UUID mới cho mỗi user; migration `down` hiện cũng tạo lại số nguyên mới, không khôi phục ID cũ. Cần xác nhận trạng thái migration và kế hoạch backup trước khi áp dụng trên DB có dữ liệu.
+- Code hiện yêu cầu người đăng ký chọn role trong danh sách non-admin, trong khi UC-02 nguồn chỉ mô tả phụ huynh tự đăng ký.
+- Code admin approve hiện kích hoạt user có password đã nhập khi đăng ký; OpenAPI lại mô tả link thiết lập password sau duyệt. `set-password` có trong backend nhưng flow approve hiện không phát link.
+- OpenAPI có endpoint/path/response chưa khớp route thực tế; cần đồng bộ trước khi frontend chuyển hết sang API thật.
+- Frontend lưu access token trong sessionStorage; đây là quyết định bảo mật cần được nhóm chấp thuận/đánh giá.
 
-## Definition of Done
+## Việc cần làm tiếp
 
-- Login/logout, role v? tr?ng th?i t?i kho?n ho?t ??ng.
-- Email tr?ng v? d? li?u sai b? t? ch?i; m?t kh?u ???c hash; token kh?ng xu?t hi?n trong log.
-- Route c?n ??ng nh?p tr? 401 khi thi?u/sai JWT; route role sai tr? 403.
-- T?i kho?n LOCKED kh?ng ??ng nh?p; regression/build/CI ??t.
+1. Chốt UC-02: role nào được tự đăng ký và quy trình đặt password/duyệt.
+2. Đồng bộ OpenAPI với route/DTO/response thực tế; thống nhất ID user là integer và enum viết thường theo backend.
+3. Chốt ID: dùng UUID nhất quán cho các resource/API; chuyển `registration_requests.id` từ SERIAL nếu không có quyết định ngoại lệ, vì OpenAPI đang mô tả UUID.
+4. Chốt logout: chấp nhận JWT sống tối đa 1 giờ hay thêm session/revocation.
+5. Xác nhận seed admin dùng secret riêng từ `.env`, không commit credential.
+6. Hoàn thiện kiểm tra route/role phía server; UI route guard chỉ hỗ trợ UX, không thay guard backend.
+7. Cấu hình test scripts backend; hiện `backend/package.json` chưa có `test`/`test:e2e` scripts.
+
+## Điều kiện hoàn tất
+
+Flow login, đăng ký, duyệt/từ chối và đặt mật khẩu khớp giữa UI/API/OpenAPI; pending/disabled không đăng nhập; token/role được bảo vệ phía server; logout/revocation có hành vi đã chốt; migration và seed chạy được trên DB sạch; CI không gọi script test chưa tồn tại.

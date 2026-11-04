@@ -1,26 +1,19 @@
-# Stage 4 ? H? s? s?c kh?e (UC-09)
+# Stage 4 — Hồ sơ sức khỏe (UC-09)
 
-## M?c ti?u
+## Tình trạng hiện tại
 
-Nh?n vi?n y t? ghi nh?n l?ch s? s?c kh?e; ph? huynh xem ph?n ???c ph?p; gi?o vi?n nh?n c?nh b?o c?n thi?t. Ph? thu?c Stage 2 child/role v? Stage 3 authorization.
+Chưa có entity/module hồ sơ sức khỏe trong backend. Phụ thuộc Stage 2 có trẻ và Stage 1/2 có xác thực, role và phạm vi truy cập. OpenAPI hiện mô tả các endpoint nhưng chưa có code tương ứng.
 
-## Database v? backend
+## Việc cần làm
 
-1. Ch?t retention, quy?n xem, ??n v? ?o v? ng??ng c?nh b?o v?i nh?m.
-2. T?o entity cho health records, allergies, medical conditions, vaccinations, medical visits v? medications theo ERD.
-3. T?o migration m?i v?i FK/index theo child v? th?i gian.
-4. Trong `backend/src/health-records/` (ho?c `health/` n?u nh?m ch?n), tri?n khai DTO/service/controller cho CRUD/read v? health summary.
-5. Ch? MEDICAL_STAFF ???c ghi; ph? huynh ch? xem tr? li?n k?t; gi?o vi?n ch? xem th?ng tin c?n thi?t cho an to?n.
-6. Ghi audit actor v? before/after; kh?ng ghi d? li?u nh?y c?m d? th?a v?o log.
-7. T?o c?nh b?o khi v??t ng??ng ?? ch?t, g?i qua notification khi c? module ??.
+1. Chốt đơn vị đo, retention, trường phụ huynh được xem và ngưỡng cảnh báo.
+2. Tạo entity cho health records, allergies, conditions, vaccinations, medical visits và medications theo ERD.
+3. Tạo migration mới, FK/index theo child và thời gian.
+4. Trong `backend/src/health-records/` (hoặc thống nhất dùng `health/`), triển khai DTO/service/controller.
+5. Chỉ MEDICAL_STAFF được ghi; parent chỉ đọc trẻ liên kết; teacher chỉ nhận dữ liệu cần cho an toàn.
+6. Audit thay đổi và tránh log thông tin nhạy cảm; gửi cảnh báo sau khi notification integration sẵn sàng.
+7. Làm UI hồ sơ y tế và parent view.
 
-## Frontend
+## Điều kiện hoàn tất
 
-- Trang t?m tr? v? h? s? theo tab: ch? s?, d? ?ng/b?nh n?n, vaccine, kh?m/thu?c.
-- Parent view ch? hi?n th? tr??ng ???c ph?p; validate s? ?o t?i form v? backend.
-
-## Definition of Done
-
-- Gi? tr? kh?ng h?p l? b? t? ch?i; l?ch s? kh?ng b? ghi ?? m?t d?u.
-- Role v? child ownership ???c ki?m tra t?i server.
-- Audit ??y ??; migration/OpenAPI/UI ??ng b?; test quy?n v? regression ??t.
+Validation số đo, lịch sử không bị ghi đè mất dấu, kiểm tra role/child ownership phía server, audit và OpenAPI đồng bộ, migration chạy được.

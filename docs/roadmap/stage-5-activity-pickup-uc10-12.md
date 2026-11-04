@@ -1,27 +1,19 @@
-# Stage 5 ? Ho?t ??ng v? ??n tr? (UC-10, UC-11, UC-12)
+# Stage 5 — Hoạt động và đón trẻ (UC-10–12)
 
-## M?c ti?u v? ph? thu?c
+## Tình trạng hiện tại
 
-Ghi nh?n ho?t ??ng l?p, tr? tham gia, v? quy tr?nh ??ng k?/x?c minh ng??i ??n. Ph? thu?c l?p, gi?o vi?n, tr?, ph? huynh v? attendance. Pickup c? d? li?u ??nh danh nh?y c?m n?n gi?i h?n quy?n ch?t.
+Chưa có activity hoặc pickup entity/module trong backend. Activity phụ thuộc lớp/child/teacher; pickup ngoài các quan hệ đó còn tích hợp check-out của UC-06.
 
-## B??c tri?n khai
+## Bước triển khai
 
-1. **Activity schema:** `Activity`, `ActivityParticipant`, `ActivityImage`; unique participant per activity/child. ?nh l?u object storage, DB ch? l?u metadata.
-2. **Activity API/UI:** gi?o vi?n t?o ho?t ??ng trong l?p ???c ph?n c?ng; th?m participant; ph? huynh ??c activity c?a tr? ?? li?n k?t.
-3. **Pickup schema:** `PickupRequest` l?u child, requester, ng??i ??n, tr?ng th?i, th?i gian, verifier, decision reason v? timestamps.
-4. **Pickup API:** ph? huynh t?o/h?y PENDING; gi?o vi?n l?p xem, approve/reject; ho?n t?t ch? t? APPROVED.
-5. **Atomic completion:** ho?n t?t pickup ph?i check-out tr? v? ??i tr?ng th?i trong transaction; ng?n x? l? ??ng th?i hai l?n.
-6. **Notifications:** n?u Stage 6 ch?a xong, d?ng interface/event abstraction ?? t?ch h?p sau; kh?ng hard-code g?i ra ngo?i.
-7. T?o migration m?i, c?p nh?t OpenAPI v? frontend.
+1. Activity: tạo `Activity`, `ActivityParticipant`, `ActivityImage`; unique `(activity_id, child_id)`.
+2. Cho giáo viên tạo hoạt động trong lớp được phân công; phụ huynh chỉ xem hoạt động của trẻ liên kết.
+3. Ảnh lưu object storage; DB lưu metadata và object key. Nếu chưa có storage, giới hạn demo/local và ghi rõ.
+4. Pickup: `PickupRequest` lưu child, requester, người đón, trạng thái, thời gian, verifier và lý do.
+5. Parent tạo/hủy yêu cầu PENDING; teacher lớp approve/reject; chỉ APPROVED mới complete.
+6. Complete phải thực hiện check-out và đổi pickup status trong transaction, tránh race/double completion.
+7. Cập nhật UI, OpenAPI, migration; tích hợp notification ở Stage 6.
 
-## Frontend
+## Điều kiện hoàn tất
 
-- Gi?o vi?n: danh s?ch ho?t ??ng, form t?o, ch?n tr?, upload ?nh; h?ng ??i y?u c?u ??n trong ng?y.
-- Ph? huynh: timeline ho?t ??ng v? form ??ng k? ng??i ??n/h?y.
-
-## Definition of Done
-
-- Gi?o vi?n kh?ng thao t?c l?p ngo?i assignment; ph? huynh ch? thao t?c tr? li?n k?t.
-- Lo?i/k?ch th??c ?nh ???c gi?i h?n; ID gi?y t? ch? hi?n ng??i c? quy?n.
-- Pickup state transitions h?p l?, completion t?o check-out ??ng m?t l?n.
-- Migration, tests quy?n/IDOR, OpenAPI v? CI ??t.
+Quyền lớp/child được kiểm tra phía server; upload có giới hạn; dữ liệu giấy tờ chỉ hiện cho role cần thiết; state transition hợp lệ; hoàn tất pickup tạo check-out đúng một lần.
