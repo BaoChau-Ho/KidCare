@@ -32,7 +32,7 @@ Cấu trúc: `loại(phạm vi): mô tả ngắn` — viết ở thể mệnh l�
 |---|---|---|
 | `feat` | Thêm tính năng mới | `feat(attendance): add check-in endpoint` |
 | `fix` | Sửa lỗi | `fix(attendance): fix late status calculation` |
-| `docs` | Chỉ sửa tài liệu | `docs(requirements): add UC-ATT-02` |
+| `docs` | Chỉ sửa tài liệu | `docs(requirements): add UC-06` |
 | `test` | Thêm hoặc sửa test | `test(children): add IDOR test` |
 | `refactor` | Sắp xếp lại code, không đổi hành vi | `refactor(notifications): extract channel interface` |
 | `chore` / `ci` | Việc vặt, cấu hình, CI | `ci: add lint step` |

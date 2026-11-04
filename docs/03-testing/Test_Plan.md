@@ -34,7 +34,7 @@
 
 ## 4. Quy ước đặt mã
 
-- Test case: `TC-<MODULE>-<số>` (ví dụ `TC-AUTH-01`, `TC-ATT-04`). Module theo mã FR: `AUTH`, `CORE`, `ATT`, `HEA`, `ACT`, `NOT`, `SEC`, `PERF`.
+- Test case: `TC-<MODULE>-<số>` (ví dụ `TC-AUTH-01`, `TC-ATT-04`). Module theo mã FR trong SRS: `AUTH`, `USER`, `CHILD`, `CLASS`, `ATT`, `HEALTH`, `ACT`, `PICK`, `NOTI`, `REP`; thêm `SEC`, `PERF`, `REL` cho NFR.
 - Mỗi test case ghi mã FR hoặc NFR mà nó kiểm tra, để cập nhật được [bảng truy vết](../01-requirements/Traceability_Matrix.md).
 - Tên file test gắn Increment để chạy regression: ví dụ `inc1-auth.e2e-spec.ts`. (Thống nhất với vai B, C khi dựng NestJS.)
 - Mẫu viết test case: [Test_Case_Template.md](Test_Case_Template.md). Mẫu báo lỗi: `.github/ISSUE_TEMPLATE/bug_report.md`.

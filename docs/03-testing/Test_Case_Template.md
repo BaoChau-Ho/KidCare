@@ -26,7 +26,7 @@ Mỗi test case nên đủ rõ để người khác chạy lại mà không ph�
 |---|---|
 | Mã | TC-AUTH-05 |
 | Tên | Phụ huynh gọi API quản trị bị từ chối |
-| Yêu cầu liên quan | FR-AUTH-02, NFR-SEC-02 |
+| Yêu cầu liên quan | FR-AUTH-05, NFR-SEC-03 |
 | Mức | API |
 | Increment | 1 |
 | Độ ưu tiên | High |
@@ -40,7 +40,7 @@ Mỗi test case nên đủ rõ để người khác chạy lại mà không ph�
 |---|---|
 | Mã | TC-SEC-01 |
 | Tên | Phụ huynh A không xem được hồ sơ con của phụ huynh B |
-| Yêu cầu liên quan | NFR-SEC-02 |
+| Yêu cầu liên quan | FR-CHILD-04, NFR-SEC-03 (UC-07) |
 | Mức | Bảo mật / API |
 | Increment | 2 |
 | Độ ưu tiên | High (Critical nếu lỗi) |

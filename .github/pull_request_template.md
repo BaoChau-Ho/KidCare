@@ -5,8 +5,8 @@
 ## Liên quan
 
 - FR: <!-- ví dụ FR-ATT-01 -->
-- Use case: <!-- ví dụ UC-ATT-02 -->
-- Increment: <!-- 0 / 1 / 2 / 3 / 4 / 5 -->
+- Use case: <!-- ví dụ UC-06 -->
+- Increment: <!-- 0 / 1 / 2 / 3 / 4 / 5 / 6 -->
 
 ## Cách kiểm tra
 
