@@ -130,3 +130,104 @@ tr:last-child td { border-bottom: 0; }
 
 /* ---- use case 1.3 ---- */
 .btn-link-inline { display: inline-block; text-decoration: none; text-align: center; }
+/* ---- UC-03 / UC-04 / UC-05: quản lý tài khoản, lớp, hồ sơ trẻ ---- */
+input[type='checkbox'], input[type='radio'] { width: auto; flex: none; accent-color: var(--teal); }
+input[type='search'] { -webkit-appearance: none; appearance: none; }
+fieldset.plain { border: 0; padding: 0; margin: 0 0 .5rem; }
+fieldset.plain legend { padding: 0; margin-bottom: .5rem; font-size: .88rem; }
+.spaced { margin-top: 1rem; }
+.sep { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
+.panel-title { margin: 0 0 .75rem; font-size: 1.05rem; }
+.back-link { margin: 1rem 0 0; font-size: .92rem; }
+
+.subnav { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: 1.25rem; border-bottom: 1.5px solid var(--line); }
+.subnav a { padding: .6rem 1rem; text-decoration: none; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1.5px; }
+.subnav a:hover { color: var(--teal-dark); }
+.subnav a.active { color: var(--teal-dark); font-weight: 600; border-bottom-color: var(--teal); }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: 1.25rem; }
+.toolbar .grow { flex: 1 1 240px; }
+.toolbar select { width: auto; min-width: 150px; }
+.toolbar-end { margin-left: auto; }
+.toolbar + .table-wrap, .alert + .table-wrap, .toolbar + .alert { margin-top: .9rem; }
+.table-wrap.flat { margin-top: 0; }
+tr.row-off td { color: var(--muted); }
+.notice.spaced { margin-bottom: 0; }
+
+.pager { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; margin-top: .9rem; }
+
+.chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+.chip { background: var(--mint); color: var(--teal-dark); border-radius: 999px; padding: .1rem .65rem; font-size: .82rem; white-space: nowrap; }
+
+.badge.locked { background: var(--danger-bg); color: var(--danger); }
+.badge.inactive, .badge.closed, .badge.withdrawn { background: #ece9e2; color: #5d5a50; }
+
+/* hộp thoại */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-start; justify-content: center;
+  padding: 4vh 1rem; overflow-y: auto; background: rgba(18, 48, 47, .5);
+}
+.modal {
+  width: 100%; max-width: 480px; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 1.5rem;
+}
+.modal .modal-title { margin: 0 0 1rem; font-size: 1.25rem; }
+.modal-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.25rem; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 .9rem; }
+.form-grid .full { grid-column: 1 / -1; }
+
+.check-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .4rem; max-height: 300px; overflow-y: auto; }
+.check-list label { display: flex; gap: .65rem; align-items: center; font-weight: 400; padding: .5rem .7rem; border: 1.5px solid var(--line); border-radius: 8px; cursor: pointer; }
+.check-list label:has(input:checked) { background: var(--mint); border-color: var(--teal); }
+.check-list label:has(input:focus-visible) { outline: 3px solid var(--sun); outline-offset: 2px; }
+
+/* tab hồ sơ trẻ */
+.tabs { display: flex; flex-wrap: wrap; gap: .25rem; margin: 1rem 0 1.25rem; border-bottom: 1.5px solid var(--line); }
+.tab { background: none; border: 0; font: inherit; padding: .6rem 1rem; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1.5px; }
+.tab:hover:not(:disabled) { color: var(--teal-dark); }
+.tab[aria-selected='true'] { color: var(--teal-dark); font-weight: 600; border-bottom-color: var(--teal); }
+.tab:disabled { opacity: .5; cursor: not-allowed; }
+.tab:focus-visible { outline: 3px solid var(--sun); outline-offset: -3px; border-radius: 6px; }
+.tabs + .notice { margin-top: -.25rem; }
+.panel { background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: 1.25rem; }
+
+.inline-form { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.inline-form .grow { flex: 1 1 240px; }
+.result-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+.result-row { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .65rem .85rem; border: 1.5px solid var(--line); border-radius: 8px; }
+
+@media (max-width: 800px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .toolbar-end { margin-left: 0; }
+}
+
+/* ---- Ô chọn tự vẽ (components/Select.jsx), dùng chung cho mọi bảng và biểu mẫu ---- */
+.select { position: relative; width: 100%; }
+.select-btn {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+  padding: .7rem .85rem; font: inherit; color: inherit; text-align: left;
+  background: #fff; border: 1.5px solid var(--line); border-radius: 8px; cursor: pointer;
+}
+.select-btn:hover:not(:disabled), .select-btn[aria-expanded='true'] { border-color: var(--teal); }
+.select-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.select-btn[aria-invalid='true'] { border-color: var(--danger); }
+.select-btn:disabled { background: #eef3f2; color: var(--muted); cursor: not-allowed; }
+.select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-chevron { flex: none; color: var(--teal); transition: transform .15s; }
+.select-btn[aria-expanded='true'] .select-chevron { transform: rotate(180deg); }
+.select-list {
+  position: absolute; z-index: 30; left: 0; top: calc(100% + 6px);
+  min-width: 100%; width: max-content; max-width: min(360px, 88vw); max-height: 260px; overflow-y: auto;
+  margin: 0; padding: .35rem; list-style: none;
+  background: #fff; border: 1.5px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px rgba(18, 48, 47, .16);
+}
+.select.up .select-list { top: auto; bottom: calc(100% + 6px); }
+.select-option { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .55rem .7rem; border-radius: 6px; cursor: pointer; }
+.select-option.is-active { background: var(--mint); }
+.select-option[aria-selected='true'] { color: var(--teal-dark); font-weight: 600; }
+.select-option[aria-disabled='true'] { opacity: .5; cursor: not-allowed; }
+.select-check { color: var(--teal); }
+
+/* thanh công cụ: ô tìm kiếm, ô chọn và nút cao bằng nhau */
+.toolbar .select { width: auto; min-width: 170px; }
+.toolbar .btn { padding: .7rem 1.1rem; font-size: 1rem; }

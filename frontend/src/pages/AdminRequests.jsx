@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { ROLES, getSession, clearSession, listRequests, listOutbox, approveRequest, rejectRequest } from '../services/auth.js'
+import { Navigate } from 'react-router-dom'
+import AppShell from '../components/AppShell.jsx'
+import { ROLES, getSession, listRequests, listOutbox, approveRequest, rejectRequest } from '../services/auth.js'
+import { REQUEST_STATUS } from '../services/labels.js'
 
 const mask = (id) => '\u2022'.repeat(8) + id.slice(-4)
 
 export default function AdminRequests() {
-  const navigate = useNavigate()
   const session = getSession()
   const [requests, setRequests] = useState([])
   const [outbox, setOutbox] = useState([])
@@ -30,25 +31,14 @@ export default function AdminRequests() {
   }
 
   return (
-    <div className="admin">
-      <header className="admin-head">
-        <div>
-          <h1>Registration requests</h1>
-          <p className="sub">Signed in as {session.user.email}</p>
-        </div>
-        <div className="actions">
-          <Link className="btn btn-sm btn-ghost btn-link-inline" to="/change-password">Change password</Link>
-          <button className="btn btn-sm" onClick={() => { clearSession(); navigate('/login') }}>Sign out</button>
-        </div>
-      </header>
-
+    <AppShell title="Yêu cầu đăng ký">
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>Name</th><th>Email</th><th>Role</th><th>National ID</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>Họ tên</th><th>Email</th><th>Vai trò</th><th>CCCD</th><th>Trạng thái</th><th>Thao tác</th></tr>
           </thead>
           <tbody>
-            {requests.length === 0 && <tr><td colSpan="6" className="empty">No requests yet. Submit one from /register.</td></tr>}
+            {requests.length === 0 && <tr><td colSpan="6" className="empty">Chưa có yêu cầu nào. Hãy gửi thử một yêu cầu từ trang /register.</td></tr>}
             {requests.map((r) => (
               <tr key={r.id}>
                 <td>{r.fullName}<br /><span className="muted">{r.phone}</span></td>
@@ -57,24 +47,24 @@ export default function AdminRequests() {
                 <td>
                   {revealed[r.id] ? r.nationalId : mask(r.nationalId)}{' '}
                   <button className="link-btn" onClick={() => setRevealed((v) => ({ ...v, [r.id]: !v[r.id] }))}>
-                    {revealed[r.id] ? 'Hide' : 'Show'}
+                    {revealed[r.id] ? 'Ẩn' : 'Hiện'}
                   </button>
                 </td>
-                <td><span className={`badge ${r.status}`}>{r.status}</span></td>
+                <td><span className={`badge ${r.status}`}>{REQUEST_STATUS[r.status] ?? r.status}</span></td>
                 <td>
                   {r.status === 'pending' && rejecting?.id !== r.id && (
                     <div className="actions">
-                      <button className="btn btn-sm" disabled={busy === r.id} onClick={() => approve(r.id)}>Approve</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => setRejecting({ id: r.id, reason: '' })}>Reject</button>
+                      <button className="btn btn-sm" disabled={busy === r.id} onClick={() => approve(r.id)}>Duyệt</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => setRejecting({ id: r.id, reason: '' })}>Từ chối</button>
                     </div>
                   )}
                   {rejecting?.id === r.id && (
                     <div className="reject-box">
-                      <input placeholder="Reason (sent to the user)" value={rejecting.reason}
+                      <input placeholder="Lý do (gửi cho người dùng)" aria-label="Lý do từ chối" value={rejecting.reason}
                         onChange={(e) => setRejecting({ ...rejecting, reason: e.target.value })} />
                       <div className="actions">
-                        <button className="btn btn-sm btn-danger" disabled={!rejecting.reason.trim() || busy === r.id} onClick={reject}>Confirm reject</button>
-                        <button className="btn btn-sm btn-ghost" onClick={() => setRejecting(null)}>Cancel</button>
+                        <button className="btn btn-sm btn-danger" disabled={!rejecting.reason.trim() || busy === r.id} onClick={reject}>Xác nhận từ chối</button>
+                        <button className="btn btn-sm btn-ghost" onClick={() => setRejecting(null)}>Hủy</button>
                       </div>
                     </div>
                   )}
@@ -86,17 +76,17 @@ export default function AdminRequests() {
         </table>
       </div>
 
-      <h2>Email outbox <span className="muted">(mock, stands in for real emails)</span></h2>
-      {outbox.length === 0 && <p className="muted">No emails sent yet.</p>}
+      <h2>Hộp thư email <span className="muted">(mô phỏng, thay cho email thật)</span></h2>
+      {outbox.length === 0 && <p className="muted">Chưa có email nào được gửi.</p>}
       <ul className="outbox">
         {outbox.map((m) => (
           <li key={m.id}>
-            <strong>{m.subject}</strong> to {m.to}
+            <strong>{m.subject}</strong> gửi đến {m.to}
             <div className="muted">{m.body}</div>
-            {m.link && <a href={m.link} target="_blank" rel="noreferrer">Open set-password link</a>}
+            {m.link && <a href={m.link} target="_blank" rel="noreferrer">Mở liên kết</a>}
           </li>
         ))}
       </ul>
-    </div>
+    </AppShell>
   )
 }

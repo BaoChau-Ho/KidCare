@@ -6,19 +6,19 @@ import {
   checkToken, resendLink, setPassword, checkResetToken, resetPassword, PASSWORD_RULES,
 } from '../services/auth.js'
 
-// One page, two flows:
-//  mode "set":   first password after admin approval (use case 1.2)
-//  mode "reset": new password from a "forgot password" email (use case 1.3)
+// Một trang, hai luồng:
+//  mode "set":   mật khẩu đầu tiên sau khi admin duyệt (use case 1.2)
+//  mode "reset": mật khẩu mới từ email "quên mật khẩu" (use case 1.3)
 const MODES = {
   set: {
-    check: checkToken, submit: setPassword, title: 'Create your password', button: 'Set password',
-    done: 'Your password is set and your account is active. Sign in to continue.',
-    expired: 'For your security, set-password links expire after 24 hours.',
+    check: checkToken, submit: setPassword, title: 'Tạo mật khẩu của bạn', button: 'Đặt mật khẩu',
+    done: 'Mật khẩu đã được đặt và tài khoản đã kích hoạt. Hãy đăng nhập để tiếp tục.',
+    expired: 'Vì lý do bảo mật, liên kết đặt mật khẩu hết hạn sau 24 giờ.',
   },
   reset: {
-    check: checkResetToken, submit: resetPassword, title: 'Choose a new password', button: 'Reset password',
-    done: 'Your password has been reset. Sign in with your new password.',
-    expired: 'Reset links expire after 1 hour.',
+    check: checkResetToken, submit: resetPassword, title: 'Chọn mật khẩu mới', button: 'Đặt lại mật khẩu',
+    done: 'Mật khẩu đã được đặt lại. Hãy đăng nhập bằng mật khẩu mới.',
+    expired: 'Liên kết đặt lại hết hạn sau 1 giờ.',
   },
 }
 
@@ -48,8 +48,8 @@ export default function SetPassword({ mode = 'set' }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(''); setConfirmErr('')
-    if (!strong) return setError('Your password does not meet all the requirements below.')
-    if (password !== confirm) return setConfirmErr('Passwords do not match')
+    if (!strong) return setError('Mật khẩu của bạn chưa đáp ứng đủ các yêu cầu bên dưới.')
+    if (password !== confirm) return setConfirmErr('Mật khẩu xác nhận không khớp')
     setLoading(true)
     try {
       await cfg.submit(token, password)
@@ -57,7 +57,7 @@ export default function SetPassword({ mode = 'set' }) {
     } catch (err) {
       if (err.code === 'EXPIRED') setLink({ status: 'expired' })
       else if (err.code === 'INVALID_TOKEN') setLink({ status: 'invalid' })
-      else setError('Something went wrong. Please try again.')
+      else setError('Đã xảy ra lỗi. Vui lòng thử lại.')
     } finally {
       setLoading(false)
     }
@@ -67,15 +67,15 @@ export default function SetPassword({ mode = 'set' }) {
     try { await resendLink(token); setResent(true) } catch { setLink({ status: 'invalid' }) }
   }
 
-  if (link.status === 'loading') return <AuthLayout><p className="sub">Checking your link...</p></AuthLayout>
+  if (link.status === 'loading') return <AuthLayout><p className="sub">Đang kiểm tra liên kết...</p></AuthLayout>
 
   if (link.status === 'invalid') {
     return (
       <AuthLayout>
-        <h1>Link not valid</h1>
-        <p className="sub">This link was already used or is incorrect.</p>
+        <h1>Liên kết không hợp lệ</h1>
+        <p className="sub">Liên kết này đã được dùng hoặc không đúng.</p>
         <Link className="btn btn-link" to={mode === 'reset' ? '/forgot-password' : '/login'}>
-          {mode === 'reset' ? 'Request a new link' : 'Go to sign in'}
+          {mode === 'reset' ? 'Yêu cầu liên kết mới' : 'Đến trang đăng nhập'}
         </Link>
       </AuthLayout>
     )
@@ -84,12 +84,12 @@ export default function SetPassword({ mode = 'set' }) {
   if (link.status === 'expired') {
     return (
       <AuthLayout>
-        <h1>Link expired</h1>
+        <h1>Liên kết đã hết hạn</h1>
         <p className="sub">{cfg.expired}</p>
-        {mode === 'reset' && <Link className="btn btn-link" to="/forgot-password">Request a new link</Link>}
+        {mode === 'reset' && <Link className="btn btn-link" to="/forgot-password">Yêu cầu liên kết mới</Link>}
         {mode === 'set' && (resent
-          ? <div className="notice" role="status">A new link has been sent to {link.email}.</div>
-          : <button className="btn" onClick={handleResend}>Send me a new link</button>)}
+          ? <div className="notice" role="status">Một liên kết mới đã được gửi đến {link.email}.</div>
+          : <button className="btn" onClick={handleResend}>Gửi liên kết mới cho tôi</button>)}
       </AuthLayout>
     )
   }
@@ -98,28 +98,28 @@ export default function SetPassword({ mode = 'set' }) {
     <AuthLayout>
       <form onSubmit={handleSubmit} noValidate>
         <h1>{cfg.title}</h1>
-        <p className="sub">Account: {link.email}</p>
+        <p className="sub">Tài khoản: {link.email}</p>
 
         {error && <div className="alert" role="alert">{error}</div>}
 
         <div className="field">
-          <label htmlFor="pw">New password</label>
+          <label htmlFor="pw">Mật khẩu mới</label>
           <div className="pw-wrap">
             <input id="pw" type={show ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={(e) => setPw(e.target.value)} />
-            <button type="button" className="pw-toggle" onClick={() => setShow((v) => !v)}>{show ? 'Hide' : 'Show'}</button>
+            <button type="button" className="pw-toggle" onClick={() => setShow((v) => !v)}>{show ? 'Ẩn' : 'Hiện'}</button>
           </div>
         </div>
 
         <PasswordRules password={password} />
 
         <div className="field">
-          <label htmlFor="confirm">Confirm password</label>
+          <label htmlFor="confirm">Xác nhận mật khẩu</label>
           <input id="confirm" type={show ? 'text' : 'password'} autoComplete="new-password" value={confirm}
             onChange={(e) => setConfirm(e.target.value)} aria-invalid={!!confirmErr} />
           {confirmErr && <span className="field-err">{confirmErr}</span>}
         </div>
 
-        <button className="btn" type="submit" disabled={loading}>{loading ? 'Saving...' : cfg.button}</button>
+        <button className="btn" type="submit" disabled={loading}>{loading ? 'Đang lưu...' : cfg.button}</button>
       </form>
     </AuthLayout>
   )

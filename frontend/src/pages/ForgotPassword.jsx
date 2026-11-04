@@ -14,28 +14,28 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    if (!EMAIL_RE.test(email.trim())) return setError('Enter a valid email address')
+    if (!EMAIL_RE.test(email.trim())) return setError('Nhập địa chỉ email hợp lệ')
     setLoading(true)
     try {
       await requestPasswordReset(email)
       setSent(true)
     } catch {
-      setError('Could not send the request. Please try again later.')
+      setError('Không thể gửi yêu cầu. Vui lòng thử lại sau.')
     } finally {
       setLoading(false)
     }
   }
 
-  // Same message whether or not the email has an account (prevents account guessing)
+  // Cùng một thông báo dù email có tài khoản hay không (tránh dò tài khoản)
   if (sent) {
     return (
       <AuthLayout>
-        <h1>Check your email</h1>
+        <h1>Kiểm tra email của bạn</h1>
         <p className="sub">
-          If an active account exists for <strong>{email.trim()}</strong>, we sent a link to reset your password.
-          The link is valid for 1 hour.
+          Nếu có tài khoản đang hoạt động với <strong>{email.trim()}</strong>, chúng tôi đã gửi liên kết đặt lại mật khẩu.
+          Liên kết có hiệu lực trong 1 giờ.
         </p>
-        <Link className="btn btn-link" to="/login">Back to sign in</Link>
+        <Link className="btn btn-link" to="/login">Về trang đăng nhập</Link>
       </AuthLayout>
     )
   }
@@ -43,8 +43,8 @@ export default function ForgotPassword() {
   return (
     <AuthLayout>
       <form onSubmit={handleSubmit} noValidate>
-        <h1>Forgot your password?</h1>
-        <p className="sub">Enter your email and we&rsquo;ll send you a link to choose a new one.</p>
+        <h1>Quên mật khẩu?</h1>
+        <p className="sub">Nhập email, chúng tôi sẽ gửi liên kết để bạn chọn mật khẩu mới.</p>
 
         {error && <div className="alert" role="alert">{error}</div>}
 
@@ -53,8 +53,8 @@ export default function ForgotPassword() {
           <input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
 
-        <button className="btn" type="submit" disabled={loading}>{loading ? 'Sending...' : 'Send reset link'}</button>
-        <p className="switch"><Link to="/login">Back to sign in</Link></p>
+        <button className="btn" type="submit" disabled={loading}>{loading ? 'Đang gửi...' : 'Gửi liên kết đặt lại'}</button>
+        <p className="switch"><Link to="/login">Về trang đăng nhập</Link></p>
       </form>
     </AuthLayout>
   )
