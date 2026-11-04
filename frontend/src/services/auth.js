@@ -1,6 +1,4 @@
-// Auth service (MOCK). Data for registration lives in localStorage so the
-// register page, the admin page and the set-password page can share it.
-// Replace each function body with a fetch to your backend when it exists.
+// Backend API helpers plus mock password-recovery flows.
 // NOTE: never store passwords or national IDs in the browser in production.
 
 export const ROLES = {
@@ -38,6 +36,28 @@ const randomHex = (bytes = 16) =>
   Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) => b.toString(16).padStart(2, '0')).join('')
 const fail = (message, code) => Object.assign(new Error(message), { code })
 
+async function apiRequest(path, options = {}, authenticated = false) {
+  const headers = { ...options.headers }
+
+  if (authenticated) {
+    const token = getSession()?.token
+    if (!token) throw fail('Please sign in again.', 'MISSING_TOKEN')
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(`/api${path}`, { ...options, headers })
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    const message = Array.isArray(data.message)
+      ? data.message.join(', ')
+      : data.message || 'The request could not be completed.'
+    throw fail(message, data.code)
+  }
+
+  return data
+}
+
 function sendMail(db, to, subject, body, link) {
   db.outbox.unshift({ id: randomHex(4), to, subject, body, link, sentAt: new Date().toISOString() })
 }
@@ -66,85 +86,67 @@ export const PASSWORD_RULES = [
  * Throws an error with `code`: INVALID_CREDENTIALS | PENDING | DISABLED | REJECTED
  */
 export async function login(email, password) {
-  // With a backend:
-  // const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
-  // const data = await res.json()
-  // if (!res.ok) throw fail(data.message, data.code)
-  // return data
-  await delay(600)
-  const e = email.toLowerCase()
-
-  const registered = [...readDb().users].reverse().find((u) => u.email === e)
-  if (registered) {
-    if (registered.status === 'active') {
-      if (registered.password !== password) throw fail('Incorrect email or password', 'INVALID_CREDENTIALS')
-      return { user: { email: e, role: registered.role }, token: 'mock-token' }
-    }
-    if (registered.status === 'rejected') throw fail('Your registration was rejected', 'REJECTED')
-    throw fail('Your account is not active yet. Wait for admin approval, then use the link in your email to set a password.', 'PENDING')
-  }
-
-  const user = MOCK_USERS.find((u) => u.email === e)
-  if (!user || password !== MOCK_PASSWORD) throw fail('Incorrect email or password', 'INVALID_CREDENTIALS')
-  if (user.status === 'pending') throw fail('Your account is waiting for admin approval', 'PENDING')
-  if (user.status === 'disabled') throw fail('Your account has been disabled', 'DISABLED')
-  return { user, token: 'mock-token' }
+  return apiRequest('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim(), password }),
+  })
 }
 
 // ---------- use case 1.2: register ----------
 /** Steps 1-2: validate and save the request as "pending". Throws EMAIL_EXISTS | ID_EXISTS */
-export async function registerRequest({ fullName, email, phone, role, nationalId }) {
-  await delay()
-  const db = readDb()
-  const e = email.trim().toLowerCase()
-  const taken = db.users.some((u) => u.email === e && u.status !== 'rejected') || MOCK_USERS.some((u) => u.email === e)
-  if (taken) throw fail('This email is already registered', 'EMAIL_EXISTS')
-  if (db.users.some((u) => u.nationalId === nationalId && u.status !== 'rejected'))
-    throw fail('This national ID is already registered', 'ID_EXISTS')
-  db.users.push({
-    id: randomHex(6), fullName: fullName.trim(), email: e, phone: phone.trim(), role, nationalId,
-    status: 'pending', createdAt: new Date().toISOString(),
+export async function registerRequest(request) {
+  const response = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
   })
-  writeDb(db)
-}
 
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    const message = Array.isArray(data.message)
+      ? data.message.join(', ')
+      : data.message || 'Could not submit your request.'
+
+    throw fail(message, data.code)
+  }
+
+  return data
+}
 // Step 3 (admin)
 export async function listRequests() {
-  await delay(150)
-  return [...readDb().users].filter((u) => !u.seed).reverse()
-}
-export async function listOutbox() {
-  await delay(150)
-  return readDb().outbox
+  return apiRequest('/admin/registration-requests', {}, true)
 }
 export async function approveRequest(id) {
-  await delay(300)
-  const db = readDb()
-  const user = db.users.find((u) => u.id === id && u.status === 'pending')
-  if (!user) throw fail('Request not found', 'NOT_FOUND')
-  user.status = 'approved'
-  issueLink(db, user) // Step 4: email with set-password link
-  writeDb(db)
+  return apiRequest(`/admin/registration-requests/${id}/approve`, {
+    method: 'PATCH',
+  }, true)
 }
 export async function rejectRequest(id, reason) {
-  await delay(300)
-  const db = readDb()
-  const user = db.users.find((u) => u.id === id && u.status === 'pending')
-  if (!user) throw fail('Request not found', 'NOT_FOUND')
-  user.status = 'rejected'
-  user.reason = reason
-  sendMail(db, user.email, 'Registration rejected', `Your registration was rejected. Reason: ${reason}`)
-  writeDb(db)
+  return apiRequest(`/admin/registration-requests/${id}/reject`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  }, true)
 }
 
 // Steps 4-5: set-password link
 /** Returns { status: 'valid' | 'expired' | 'invalid', email? } */
 export async function checkToken(token) {
-  await delay(250)
-  const user = readDb().users.find((u) => u.token && u.token === token && u.status === 'approved')
-  if (!user) return { status: 'invalid' }
-  if (Date.now() > user.tokenExpires) return { status: 'expired', email: user.email }
-  return { status: 'valid', email: user.email }
+  const response = await fetch(
+    `/api/auth/set-password/check?token=${encodeURIComponent(token)}`
+  )
+  const data = await response.json().catch(() => ({}))
+
+  if (response.ok) return data
+  if (data.code === 'EXPIRED') {
+    return { status: 'expired', email: data.email }
+  }
+
+  return { status: 'invalid' }
 }
 /** 5b: send a fresh link when the old one has expired */
 export async function resendLink(token) {
@@ -157,17 +159,25 @@ export async function resendLink(token) {
 }
 /** Step 6: save the password and activate the account */
 export async function setPassword(token, password) {
-  await delay(500)
-  const db = readDb()
-  const user = db.users.find((u) => u.token === token && u.status === 'approved')
-  if (!user) throw fail('This link is not valid', 'INVALID_TOKEN')
-  if (Date.now() > user.tokenExpires) throw fail('This link has expired', 'EXPIRED')
-  if (!PASSWORD_RULES.every((r) => r.test(password))) throw fail('Password is not strong enough', 'WEAK_PASSWORD')
-  user.password = password
-  user.status = 'active'
-  delete user.token
-  delete user.tokenExpires
-  writeDb(db)
+  const response = await fetch('/api/auth/set-password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token, password }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    const message = Array.isArray(data.message)
+      ? data.message.join(', ')
+      : data.message || 'Could not set password.'
+
+    throw fail(message, data.code)
+  }
+
+  return data
 }
 
 // ---------- use case 1.3: forgot / change password ----------
