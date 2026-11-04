@@ -1,32 +1,71 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { ROLES, getSession, clearSession, listRequests, listOutbox, approveRequest, rejectRequest } from '../services/auth.js'
+import {
+  ROLES,
+  getSession,
+  clearSession,
+  listRequests,
+  approveRequest,
+  rejectRequest,
+} from '../services/auth.js'
 
 const mask = (id) => '\u2022'.repeat(8) + id.slice(-4)
 
 export default function AdminRequests() {
   const navigate = useNavigate()
   const session = getSession()
+  const isAdmin = session?.user?.role === 'admin'
   const [requests, setRequests] = useState([])
-  const [outbox, setOutbox] = useState([])
   const [busy, setBusy] = useState('')
   const [rejecting, setRejecting] = useState(null) // { id, reason }
   const [revealed, setRevealed] = useState({})
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
   const refresh = useCallback(async () => {
-    setRequests(await listRequests())
-    setOutbox(await listOutbox())
+    try {
+      setRequests(await listRequests())
+      setError('')
+    } catch (err) {
+      setError(err.message || 'Could not load registration requests.')
+    }
   }, [])
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => {
+    if (isAdmin) refresh()
+  }, [isAdmin, refresh])
 
-  if (!session || session.user.role !== 'admin') return <Navigate to="/login" replace />
+  if (!isAdmin) return <Navigate to="/login" replace />
 
-  const approve = async (id) => { setBusy(id); await approveRequest(id); setBusy(''); refresh() }
+  const approve = async (id) => {
+    setBusy(id)
+    setError('')
+    setNotice('')
+    try {
+      const result = await approveRequest(id)
+      setNotice(`${result.email} is approved and can sign in with the password chosen during registration.`)
+      await refresh()
+    } catch (err) {
+      setError(err.message || 'Could not approve this request.')
+    } finally {
+      setBusy('')
+    }
+  }
+
   const reject = async () => {
-    if (!rejecting.reason.trim()) return
-    setBusy(rejecting.id)
-    await rejectRequest(rejecting.id, rejecting.reason.trim())
-    setBusy(''); setRejecting(null); refresh()
+    if (!rejecting?.reason.trim()) return
+    const { id, reason } = rejecting
+    setBusy(id)
+    setError('')
+    setNotice('')
+    try {
+      await rejectRequest(id, reason.trim())
+      setRejecting(null)
+      await refresh()
+    } catch (err) {
+      setError(err.message || 'Could not reject this request.')
+    } finally {
+      setBusy('')
+    }
   }
 
   return (
@@ -42,6 +81,9 @@ export default function AdminRequests() {
         </div>
       </header>
 
+      {error && <div className="alert" role="alert">{error}</div>}
+      {notice && <div className="notice" role="status">{notice}</div>}
+
       <div className="table-wrap">
         <table>
           <thead>
@@ -53,7 +95,7 @@ export default function AdminRequests() {
               <tr key={r.id}>
                 <td>{r.fullName}<br /><span className="muted">{r.phone}</span></td>
                 <td>{r.email}</td>
-                <td>{ROLES[r.role].label}</td>
+                <td>{ROLES[r.role]?.label || r.role}</td>
                 <td>
                   {revealed[r.id] ? r.nationalId : mask(r.nationalId)}{' '}
                   <button className="link-btn" onClick={() => setRevealed((v) => ({ ...v, [r.id]: !v[r.id] }))}>
@@ -70,7 +112,7 @@ export default function AdminRequests() {
                   )}
                   {rejecting?.id === r.id && (
                     <div className="reject-box">
-                      <input placeholder="Reason (sent to the user)" value={rejecting.reason}
+                      <input placeholder="Reason for rejecting this request" value={rejecting.reason}
                         onChange={(e) => setRejecting({ ...rejecting, reason: e.target.value })} />
                       <div className="actions">
                         <button className="btn btn-sm btn-danger" disabled={!rejecting.reason.trim() || busy === r.id} onClick={reject}>Confirm reject</button>
@@ -78,7 +120,7 @@ export default function AdminRequests() {
                       </div>
                     </div>
                   )}
-                  {r.status === 'rejected' && <span className="muted">{r.reason}</span>}
+                  {r.status === 'rejected' && <span className="muted">{r.rejectionReason}</span>}
                 </td>
               </tr>
             ))}
@@ -86,17 +128,6 @@ export default function AdminRequests() {
         </table>
       </div>
 
-      <h2>Email outbox <span className="muted">(mock, stands in for real emails)</span></h2>
-      {outbox.length === 0 && <p className="muted">No emails sent yet.</p>}
-      <ul className="outbox">
-        {outbox.map((m) => (
-          <li key={m.id}>
-            <strong>{m.subject}</strong> to {m.to}
-            <div className="muted">{m.body}</div>
-            {m.link && <a href={m.link} target="_blank" rel="noreferrer">Open set-password link</a>}
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }

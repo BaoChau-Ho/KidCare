@@ -1,14 +1,21 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout.jsx'
-import { registerRequest, ROLES, REGISTER_ROLES } from '../services/auth.js'
+import PasswordRules from '../components/PasswordRules.jsx'
+import {
+  registerRequest,
+  ROLES,
+  REGISTER_ROLES,
+  PASSWORD_RULES,
+} from '../services/auth.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_RE = /^\+?\d{9,12}$/
 const ID_RE = /^\d{12}$/ // Vietnamese citizen ID (CCCD) has 12 digits
 
 export default function Register() {
-  const [form, setForm] = useState({ fullName: '', email: '', phone: '', role: '', nationalId: '' })
+  const [form, setForm] = useState({ fullName: '', email: '', phone: '', role: '', nationalId: '', password: '' })
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState({})
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -23,6 +30,10 @@ export default function Register() {
     if (!PHONE_RE.test(form.phone.replace(/\s/g, ''))) errs.phone = 'Enter a valid phone number'
     if (!form.role) errs.role = 'Choose your role'
     if (!ID_RE.test(form.nationalId)) errs.nationalId = 'National ID (CCCD) must be 12 digits'
+    if (!PASSWORD_RULES.every((rule) => rule.test(form.password))) {
+      errs.password = 'Choose a password that meets all the requirements below'
+    }
+    if (confirmPassword !== form.password) errs.confirmPassword = 'Passwords do not match'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -34,6 +45,8 @@ export default function Register() {
     setLoading(true)
     try {
       await registerRequest({ ...form, phone: form.phone.replace(/\s/g, '') })
+      setForm((current) => ({ ...current, password: '' }))
+      setConfirmPassword('')
       setDone(true)
     } catch (err) {
       // 2a: duplicate email / national ID
@@ -50,8 +63,7 @@ export default function Register() {
       <AuthLayout>
         <h1>Request submitted</h1>
         <p className="sub">
-          An admin will review your information. When it is approved, we will email <strong>{form.email}</strong> a
-          link to create your password.
+          An admin will review your information. You can sign in with the password you created once your request is approved.
         </p>
         <Link className="btn btn-link" to="/login">Back to sign in</Link>
       </AuthLayout>
@@ -92,6 +104,27 @@ export default function Register() {
 
         {field('nationalId', 'National ID (CCCD)', { inputMode: 'numeric', maxLength: 12, autoComplete: 'off' })}
         <p className="hint">Used only to verify your identity. Only admins can see it.</p>
+
+        {field('password', 'Password', { type: 'password', autoComplete: 'new-password' })}
+        <PasswordRules password={form.password} />
+
+        <div className="field">
+          <label htmlFor="confirmPassword">Confirm password</label>
+          <input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            aria-invalid={!!errors.confirmPassword}
+            aria-describedby={errors.confirmPassword ? 'confirmPassword-err' : undefined}
+          />
+          {errors.confirmPassword && (
+            <span id="confirmPassword-err" className="field-err">
+              {errors.confirmPassword}
+            </span>
+          )}
+        </div>
 
         <button className="btn" type="submit" disabled={loading}>
           {loading ? 'Submitting...' : 'Submit request'}
