@@ -14,6 +14,7 @@ import { DataSource } from 'typeorm';
           username: process.env.DB_USERNAME ?? 'user',
           password: process.env.DB_PASSWORD ?? 'password',
           database: process.env.DB_DATABASE ?? 'mydb',
+          uuidExtension: 'pgcrypto',
           entities: [__dirname + '/../**/*.entity{.ts,.js}'],
           migrations: [__dirname + '/migrations/*{.ts,.js}'],
           synchronize: false,
