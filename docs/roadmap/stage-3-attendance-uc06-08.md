@@ -1,34 +1,29 @@
-# Stage 3 ? ?i?m danh v? y?u c?u ngh? (UC-06, UC-07, UC-08)
+# Stage 3 — Điểm danh, dashboard phụ huynh và nghỉ học (UC-06–08)
 
-## M?c ti?u v? th? t?
+## Tình trạng hiện tại
 
-X?y d? li?u ?i?m danh, ph? huynh xem th?ng tin c?a con, v? g?i ??n ngh?. Stage n?y ph? thu?c v?o user, l?p, tr? v? li?n k?t child-parent c?a Stage 2.
+Chưa có module/entity attendance, leave request hoặc child trong backend. Stage này phụ thuộc Stage 2 hoàn tất tối thiểu `Child`, `Classroom`, phân công giáo viên và liên kết phụ huynh. Auth hiện đã có JWT guard nhưng chưa có role Manager/Teacher/Parent scope guard.
 
-## Database
+## Mục tiêu và database
 
-- `Attendance`: child, date, status, check-in/out timestamps, recorded-by user; unique `(child_id, date)`.
-- `LeaveRequest`: child, requester, date range, reason, status, timestamps; ki?m tra overlap/tr?ng th?i trong transaction ho?c service.
-- T?o migration m?i sau khi entity ho?n t?t; th?m index theo l?p/ng?y v? tr?/ng?y.
+- `Attendance`: child, date, status, check-in/out timestamps, recorded-by; unique `(child_id, date)`.
+- `LeaveRequest`: child, requester, date range, reason, status, timestamps; kiểm tra trùng/overlap theo quy tắc đã chốt.
+- Tạo migration mới sau khi entity ổn định; thêm index theo lớp/ngày và trẻ/ngày.
 
-## Backend
+## Bước triển khai
 
-1. T?o `attendance/` entity, DTO, service, controller, module.
-2. GET roster theo l?p/ng?y ch? cho gi?o vi?n ???c ph?n c?ng ho?c manager.
-3. POST check-in/check-out; validate tr?nh t?, ng?y v? tr?ng th?i; transaction + actor.
-4. T?o UC-07 read endpoints cho ph? huynh: today, history, overview. M?i truy v?n x?c minh CHILD_PARENT.
-5. T?o `leave-requests/`; ki?m tra ng?y kh?ng qu? kh?, ng?y k?t th?c >= b?t ??u, kh?ng tr?ng ??n.
-6. Ch?t ??n ngh? c? hi?u l?c ngay hay c?n gi?o vi?n duy?t. ??ng b? tr?ng th?i ngh? v?i attendance v? th?ng b?o.
-7. C?p nh?t OpenAPI; kh?ng ??a quy?n truy c?p ch? d?a v?o frontend.
+1. Tạo `backend/src/attendance/` entity, DTO, service, controller, module.
+2. Tạo roster theo lớp/ngày; giáo viên chỉ xem lớp được phân công.
+3. Check-in/out kiểm tra trình tự và trạng thái; lưu cùng actor trong transaction.
+4. Thêm phụ huynh xem trạng thái hôm nay/lịch sử. Mọi truy vấn xác minh quan hệ CHILD_PARENT phía server.
+5. Tạo `backend/src/leave-requests/`; validate ngày, child ownership và đơn trùng.
+6. Chốt đơn nghỉ có hiệu lực ngay hay cần duyệt; cập nhật trạng thái attendance nhất quán.
+7. Cập nhật OpenAPI/UI; chưa kết nối notification nếu chưa có module đó, có thể tạo interface tích hợp.
 
 ## Frontend
 
-- M?n h?nh ?i?m danh theo l?p/ng?y v? thao t?c check-in/out.
-- Parent dashboard: ch?n tr?, tr?ng th?i h?m nay, l?ch s? v? g?i ??n ngh?.
-- X? l? empty/error/loading; ph?n trang l?ch s?.
+Màn hình điểm danh theo lớp/ngày; Parent dashboard; gửi đơn nghỉ; phân trang và trạng thái loading/error/empty.
 
-## Ki?m tra v? ho?n t?t
+## Điều kiện hoàn tất
 
-- Check-out tr??c check-in, record tr?ng ng?y, l?p ngo?i assignment v? child kh?ng thu?c parent ??u b? ch?n.
-- ??n ngh? ng?y sai/tr?ng b? t? ch?i; l?i gi?a transaction rollback.
-- Th?ng tin child kh?c kh?ng th? l?y b?ng c?ch thay ID.
-- Migration, OpenAPI, UI, regression v? CI c?p nh?t ??ng b?.
+Lớp ngoài quyền, check-out trước check-in, record trùng ngày, child ngoài quan hệ phụ huynh và đơn nghỉ không hợp lệ đều bị chặn; transaction rollback; OpenAPI/UI/CI đồng bộ.
