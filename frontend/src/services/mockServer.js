@@ -3,78 +3,24 @@
 import { getSession } from './auth.js'
 import { ApiError } from './apiError.js'
 import { normRole } from './labels.js'
-import { loadDb, saveDb } from './mockDb.js'
+import { loadDb, saveDb } from './mockDB.js'
+import * as C from './mockCore.js'
+// Mỗi module đăng ký các route của UC tương ứng
+import './mock/attendance.js'
+import './mock/leave.js'
+import './mock/health.js'
+import './mock/activities.js'
+import './mock/pickups.js'
+import './mock/notifications.js'
+import './mock/reports.js'
 
-const ROLE_LIST = ['ADMIN', 'MANAGER', 'TEACHER', 'MEDICAL_STAFF', 'PARENT']
-const USER_STATUSES = ['ACTIVE', 'LOCKED', 'INACTIVE']
-const CHILD_STATUSES = ['ACTIVE', 'INACTIVE', 'WITHDRAWN']
-const GENDERS = ['MALE', 'FEMALE', 'OTHER']
-const RELS = ['FATHER', 'MOTHER', 'GUARDIAN']
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-const delay = (ms = 250) => new Promise((r) => setTimeout(r, ms))
-const uid = () => crypto.randomUUID()
-const now = () => new Date().toISOString()
-const fold = (s = '') => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd')
-
-/* ---------- tiện ích ---------- */
-const bad = (message, field) => { throw new ApiError(400, 'VALIDATION', message, field) }
-const found = (x, what) => { if (!x) throw new ApiError(404, 'NOT_FOUND', `Không tìm thấy ${what}.`); return x }
-const need = (actor, ...roles) => {
-  if (!roles.includes(actor.role)) throw new ApiError(403, 'FORBIDDEN', 'Bạn không có quyền thực hiện thao tác này.')
-}
-const paginate = (items, q) => {
-  const page = Math.max(1, +q.page || 1)
-  const limit = Math.min(100, Math.max(1, +q.limit || 10))
-  return { items: items.slice((page - 1) * limit, page * limit), pageInfo: { page, limit, totalItems: items.length, totalPages: Math.ceil(items.length / limit) } }
-}
-const audit = (db, actor, action, resourceType, resourceId, extra = {}) =>
-  db.auditLogs.unshift({ id: uid(), actorEmail: actor.email, action, resourceType, resourceId, ...extra, at: now() })
-const diffObj = (a, b) => {
-  const before = {}, after = {}
-  for (const k of Object.keys(b)) if (a[k] !== b[k]) { before[k] = a[k]; after[k] = b[k] }
-  return { before, after }
-}
-const isSelf = (actor, user) => user.email.toLowerCase() === String(actor.email || '').toLowerCase()
-const className = (db, id) => db.classes.find((c) => c.id === id)?.name ?? null
-const activeClass = (db, id) => {
-  const c = db.classes.find((x) => x.id === id)
-  if (!c || c.status !== 'ACTIVE') throw new ApiError(409, 'CLASS_NOT_AVAILABLE', 'Lớp không tồn tại hoặc đã đóng. Hãy chọn lớp khác.', 'classId')
-  return c
-}
-const activeChildCount = (db, classId) => db.children.filter((c) => c.classId === classId && c.status === 'ACTIVE').length
-
-const outClass = (db, c) => {
-  const links = db.classTeachers.filter((x) => x.classId === c.id)
-  return {
-    ...c,
-    teacherUserIds: links.map((l) => l.teacherUserId),
-    teachers: links.map((l) => ({ userId: l.teacherUserId, fullName: db.users.find((u) => u.id === l.teacherUserId)?.fullName ?? '\u2014' })),
-    childCount: activeChildCount(db, c.id),
-  }
-}
-const outChild = (db, ch, withParents = false) => {
-  const links = db.childParents.filter((l) => l.childId === ch.id)
-  return {
-    ...ch,
-    className: className(db, ch.classId),
-    parentUserIds: links.map((l) => l.parentUserId),
-    ...(withParents && {
-      parents: links.map((l) => {
-        const u = db.users.find((x) => x.id === l.parentUserId)
-        return { userId: l.parentUserId, fullName: u?.fullName, email: u?.email, phone: u?.phone, relationship: l.relationship }
-      }),
-    }),
-  }
-}
-const childSnap = (db, ch) => ({ name: ch.name, dateOfBirth: ch.dateOfBirth, gender: ch.gender, address: ch.address || '', class: className(db, ch.classId), status: ch.status })
-const validDob = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !Number.isNaN(Date.parse(s)) && Date.parse(s) <= Date.now()
+const {
+  ROLE_LIST, USER_STATUSES, CHILD_STATUSES, GENDERS, RELS, EMAIL_RE, delay, uid, now, fold, bad, found, need, paginate, audit,
+  diffObj, isSelf, activeClass, activeChildCount, outClass, outChild, childSnap, validDob, route, routes,
+  teacherClassIds, parentChildIds, classAccess, childAccess,
+} = C
 
 /* ---------- router ---------- */
-const routes = []
-const route = (method, pattern, handler) =>
-  routes.push({ method, re: new RegExp('^' + pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), handler })
-
 /* UC-03 — tài khoản (Admin) */
 route('GET', '/users', ({ db, actor, query }) => {
   // Quản lý cơ sở được tra cứu giáo viên/phụ huynh để phân công/liên kết (UC-04, UC-05)
@@ -140,9 +86,10 @@ route('GET', '/audit-logs', ({ db, actor, query }) => {
 
 /* UC-05 — lớp học */
 route('GET', '/classes', ({ db, actor, query }) => {
-  need(actor, 'MANAGER')
+  need(actor, 'MANAGER', 'TEACHER', 'MEDICAL_STAFF')
+  const mine = actor.role === 'TEACHER' ? teacherClassIds(db, actor) : null
   const rows = db.classes
-    .filter((c) => (!query.academicYear || c.academicYear.includes(query.academicYear)) && (!query.status || c.status === query.status))
+    .filter((c) => (!mine || mine.includes(c.id)) && (!query.academicYear || c.academicYear.includes(query.academicYear)) && (!query.status || c.status === query.status))
     .sort((a, b) => b.academicYear.localeCompare(a.academicYear) || a.name.localeCompare(b.name, 'vi'))
   const p = paginate(rows, query)
   return { ...p, items: p.items.map((c) => outClass(db, c)) }
@@ -163,8 +110,19 @@ route('POST', '/classes', ({ db, actor, body }) => {
 })
 
 route('GET', '/classes/:id', ({ db, actor, params }) => {
-  need(actor, 'MANAGER')
-  return outClass(db, found(db.classes.find((c) => c.id === params.id), 'lớp'))
+  need(actor, 'MANAGER', 'TEACHER')
+  const c = found(db.classes.find((x) => x.id === params.id), 'lớp')
+  classAccess(db, actor, c.id)
+  return outClass(db, c)
+})
+
+// Danh sách trẻ đang học của lớp (giáo viên chỉ xem lớp mình phụ trách)
+route('GET', '/classes/:id/children', ({ db, actor, params }) => {
+  need(actor, 'MANAGER', 'TEACHER')
+  const c = found(db.classes.find((x) => x.id === params.id), 'lớp')
+  classAccess(db, actor, c.id)
+  const items = db.children.filter((ch) => ch.classId === c.id && ch.status === 'ACTIVE').sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  return { items: items.map((ch) => outChild(db, ch)) }
 })
 
 route('PATCH', '/classes/:id', ({ db, actor, params, body }) => {
@@ -221,10 +179,11 @@ route('DELETE', '/classes/:id/teachers/:tid', ({ db, actor, params }) => {
 
 /* UC-04 — hồ sơ trẻ */
 route('GET', '/children', ({ db, actor, query }) => {
-  need(actor, 'MANAGER')
+  need(actor, 'MANAGER', 'MEDICAL_STAFF', 'PARENT')
+  const mine = actor.role === 'PARENT' ? parentChildIds(db, actor) : null
   const q = fold(query.query || '')
   const rows = db.children
-    .filter((c) => (!q || fold(c.name).includes(q)) && (!query.classId || c.classId === query.classId) && (!query.status || c.status === query.status))
+    .filter((c) => (!mine || mine.includes(c.id)) && (!q || fold(c.name).includes(q)) && (!query.classId || c.classId === query.classId) && (!query.status || c.status === query.status))
     .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
   const p = paginate(rows, query)
   return { ...p, items: p.items.map((c) => outChild(db, c)) }
@@ -245,8 +204,12 @@ route('POST', '/children', ({ db, actor, body }) => {
 })
 
 route('GET', '/children/:id', ({ db, actor, params }) => {
-  need(actor, 'MANAGER')
-  return outChild(db, found(db.children.find((c) => c.id === params.id), 'hồ sơ trẻ'), true)
+  need(actor, 'MANAGER', 'MEDICAL_STAFF', 'PARENT')
+  const ch = found(db.children.find((c) => c.id === params.id), 'hồ sơ trẻ')
+  childAccess(db, actor, ch, ['MANAGER', 'MEDICAL_STAFF', 'PARENT']) // phụ huynh đổi id sang trẻ khác -> 404
+  // Phụ huynh không cần thấy thông tin liên hệ của phụ huynh khác
+  const out = outChild(db, ch, actor.role === 'MANAGER') // chỉ quản lý cần thông tin liên hệ phụ huynh
+  return out
 })
 
 route('PATCH', '/children/:id', ({ db, actor, params, body }) => {
