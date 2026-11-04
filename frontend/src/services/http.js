@@ -4,7 +4,7 @@ import { mockRequest } from './mockServer.js'
 
 // Mặc định dùng mock server (dữ liệu trong localStorage) giống auth.js.
 // Khi backend sẵn sàng: đặt VITE_USE_MOCK=false và VITE_API_URL trong .env
-const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 const clean = (q = {}) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== '' && v != null))
@@ -20,10 +20,10 @@ export async function api(method, path, { query, body } = {}) {
       method,
       credentials: 'include',
       headers: {
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     })
   } catch {
     throw new ApiError(0, 'NETWORK', 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.')

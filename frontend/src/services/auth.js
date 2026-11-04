@@ -6,7 +6,7 @@
 // CHANGED (UC-03): sign in now also reads the accounts managed on /admin/users
 // (kho dùng chung trong mockDb.js). Accounts created, locked or re-roled there
 // take effect here immediately.
-import { loadDb as loadManaged, saveDb as saveManaged } from './mockDb.js'
+import { loadDb as loadManaged, saveDb as saveManaged } from './mockDB.js'
 
 export const ROLES = {
   parent: { label: 'Phụ huynh', home: '/parent' },

@@ -51,7 +51,7 @@ export default function Select({ id, value, onChange, children, disabled, classN
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
   useEffect(() => {
-    if (open) list.current?.children[active]?.scrollIntoView({ block: 'nearest' })
+    if (open) list.current?.children[active]?.scrollIntoView?.({ block: 'nearest' })
   }, [open, active])
 
   const onKeyDown = (e) => {
