@@ -12,31 +12,31 @@ Cột "Nguồn": **SRS** = yêu cầu có trong SRS; **Kế hoạch** = ngưỡn
 
 | Mã | Yêu cầu | Cách kiểm tra | Công cụ | Test case | Kiểm ở | Nguồn |
 |---|---|---|---|---|---|---|
-| NFR-PERF-01 | API thông thường trả lời dưới 500 ms | Đo với dữ liệu mẫu lớn (khoảng 10.000 bản ghi điểm danh), lấy thời gian trả lời (đề xuất đo p95). Kiểm tra truy vấn "hôm nay" của điểm danh có index bằng `EXPLAIN` | k6 / autocannon (đề xuất), SQL `EXPLAIN` | TC-PERF-… | Inc 3, tuần 11 | SRS |
-| NFR-PERF-02 | Hỗ trợ nhiều request đồng thời | Gửi nhiều request song song vào API thường dùng → không lỗi, thời gian trả lời vẫn đạt NFR-PERF-01 | k6 / autocannon (đề xuất) | TC-PERF-… | Inc 3, tuần 11 | SRS |
-| NFR-PERF-03 | Mọi API danh sách có phân trang | Gọi API danh sách với dữ liệu lớn → số bản ghi trả về bị giới hạn theo trang | Supertest | TC-PERF-… | Mỗi Inc | SRS |
+| NFR-PERF-01 | API thông thường trả lời dưới 500 ms | Đo với dữ liệu mẫu lớn (khoảng 10.000 bản ghi điểm danh), lấy thời gian trả lời (đề xuất đo p95). Kiểm tra truy vấn "hôm nay" của điểm danh có index bằng `EXPLAIN` | k6 / autocannon (đề xuất), SQL `EXPLAIN` | TC-PERF-01 | Inc 3, tuần 11 | SRS |
+| NFR-PERF-02 | Hỗ trợ nhiều request đồng thời | Gửi nhiều request song song vào API thường dùng → không lỗi, thời gian trả lời vẫn đạt NFR-PERF-01 | k6 / autocannon (đề xuất) | TC-PERF-02 | Inc 3, tuần 11 | SRS |
+| NFR-PERF-03 | Mọi API danh sách có phân trang | Gọi API danh sách với dữ liệu lớn → số bản ghi trả về bị giới hạn theo trang | Supertest | TC-USER-06, TC-CHILD-08, TC-ATT-07, TC-NOTI-03 | Mỗi Inc | SRS |
 
 ## Bảo mật
 
 | Mã | Yêu cầu | Cách kiểm tra | Công cụ | Test case | Kiểm ở | Nguồn |
 |---|---|---|---|---|---|---|
-| NFR-SEC-01 | Mật khẩu được hash (bcrypt/argon2), không lưu nguyên văn | Xem bảng `users` trong database: không có mật khẩu rõ | SQL + test tích hợp | TC-SEC-… | Inc 1, tuần 11 | SRS |
-| NFR-SEC-02 | Xác thực bằng JWT; access token hết hạn sau ~15 phút | Dùng token hết hạn và token sửa tay → 401 | Supertest | TC-SEC-… | Inc 1, tuần 11 | SRS, Kế hoạch |
-| NFR-SEC-03 | RBAC ở mọi API, theo quyền tối thiểu: mọi API mặc định từ chối; người dùng chỉ xem được dữ liệu của mình (không IDOR) | Sai vai trò → 403. Đổi `id` trên đường dẫn sang dữ liệu người khác → 403. Quét danh sách endpoint, đối chiếu với bảng API × vai trò | Supertest, test tự động duyệt route, kiểm tra tay | TC-SEC-… | Mỗi Inc, tuần 11 | SRS |
-| NFR-SEC-04 | Dữ liệu đầu vào được kiểm tra (email hợp lệ, mật khẩu đủ mạnh, ký tự lạ không gây lỗi 500) | Gửi dữ liệu sai định dạng, quá dài, ký tự đặc biệt → trả 400, không crash | Supertest | TC-SEC-… | Mỗi Inc | SRS |
-| NFR-SEC-05 | Giới hạn số lần đăng nhập sai (5 lần/phút) | Gửi liên tục yêu cầu đăng nhập sai → từ lần thứ 6 bị chặn (429 hoặc tương đương) | Supertest | TC-SEC-… | Inc 1 | SRS, Kế hoạch (mục 5) |
-| NFR-SEC-06 | Thao tác quan trọng được ghi audit log (ai, làm gì, giá trị cũ/mới, IP) | Thực hiện thao tác → kiểm tra bản ghi `audit_logs` | Test tích hợp | TC-SEC-… | Inc 1, 2, 4 | SRS |
-| NFR-SEC-07 | Bản deploy dùng HTTPS / TLS | Truy cập bằng `https://`; `http://` được chuyển hướng hoặc chặn | Trình duyệt, curl | TC-SEC-… | Tuần 11 | SRS, Kế hoạch (mục 27) |
-| NFR-SEC-08 | Không trả dữ liệu trẻ vượt mức cần thiết; không lộ mật khẩu, khóa bí mật hoặc lỗi nội bộ trong response | Kiểm tra response theo từng vai trò (ví dụ phụ huynh chỉ nhận trường sức khỏe được phép). Xem response lỗi | Supertest, kiểm tra tay | TC-SEC-… | Inc 2, 4, tuần 11 | SRS |
-| NFR-SEC-09 | Lưu trữ và xử lý token an toàn | Dùng refresh token sau khi đăng xuất → 401. Refresh token không lưu dạng rõ trong database (đề xuất) | Supertest, SQL | TC-SEC-… | Inc 1 | SRS, Đề xuất |
+| NFR-SEC-01 | Mật khẩu được hash (bcrypt/argon2), không lưu nguyên văn | Xem bảng `users` trong database: không có mật khẩu rõ | SQL + test tích hợp | TC-SEC-02 | Inc 1, tuần 11 | SRS |
+| NFR-SEC-02 | Xác thực bằng JWT; access token hết hạn sau ~15 phút | Dùng token hết hạn và token sửa tay → 401 | Supertest | TC-SEC-03, 04 | Inc 1, tuần 11 | SRS, Kế hoạch |
+| NFR-SEC-03 | RBAC ở mọi API, theo quyền tối thiểu: mọi API mặc định từ chối; người dùng chỉ xem được dữ liệu của mình (không IDOR) | Sai vai trò → 403. Đổi `id` trên đường dẫn sang dữ liệu người khác → 403. Quét danh sách endpoint, đối chiếu với bảng API × vai trò | Supertest, test tự động duyệt route, kiểm tra tay | TC-AUTH-11, TC-SEC-08, TC-CHILD-07, TC-CLASS-07, TC-ATT-05, 06, TC-HEALTH-08, TC-ACT-02, TC-NOTI-02, 04 | Mỗi Inc, tuần 11 | SRS |
+| NFR-SEC-04 | Dữ liệu đầu vào được kiểm tra (email hợp lệ, mật khẩu đủ mạnh, ký tự lạ không gây lỗi 500) | Gửi dữ liệu sai định dạng, quá dài, ký tự đặc biệt → trả 400, không crash | Supertest | TC-SEC-06, TC-AUTH-03, 12 | Mỗi Inc | SRS |
+| NFR-SEC-05 | Giới hạn số lần đăng nhập sai (5 lần/phút) | Gửi liên tục yêu cầu đăng nhập sai → từ lần thứ 6 bị chặn (429 hoặc tương đương) | Supertest | TC-SEC-05 | Inc 1 | SRS, Kế hoạch (mục 5) |
+| NFR-SEC-06 | Thao tác quan trọng được ghi audit log (ai, làm gì, giá trị cũ/mới, IP) | Thực hiện thao tác → kiểm tra bản ghi `audit_logs` | Test tích hợp | TC-USER-03, TC-HEALTH-06 | Inc 1, 2, 4 | SRS |
+| NFR-SEC-07 | Bản deploy dùng HTTPS / TLS | Truy cập bằng `https://`; `http://` được chuyển hướng hoặc chặn | Trình duyệt, curl | TC-SEC-10 | Tuần 11 | SRS, Kế hoạch (mục 27) |
+| NFR-SEC-08 | Không trả dữ liệu trẻ vượt mức cần thiết; không lộ mật khẩu, khóa bí mật hoặc lỗi nội bộ trong response | Kiểm tra response theo từng vai trò (ví dụ phụ huynh chỉ nhận trường sức khỏe được phép). Xem response lỗi | Supertest, kiểm tra tay | TC-SEC-01, 07, TC-SYS-03, TC-HEALTH-07 | Inc 2, 4, tuần 11 | SRS |
+| NFR-SEC-09 | Lưu trữ và xử lý token an toàn | Dùng refresh token sau khi đăng xuất → 401. Refresh token không lưu dạng rõ trong database (đề xuất) | Supertest, SQL | TC-AUTH-07 | Inc 1 | SRS, Đề xuất |
 
 ## Độ tin cậy
 
 | Mã | Yêu cầu | Cách kiểm tra | Công cụ | Test case | Kiểm ở | Nguồn |
 |---|---|---|---|---|---|---|
-| NFR-REL-01 | Không mất dữ liệu điểm danh; không tạo bản ghi trùng (trẻ, ngày), kể cả khi gửi đồng thời | Gửi 2 yêu cầu điểm danh song song → chỉ 1 bản ghi | Test đồng thời + ràng buộc DB | TC-REL-… | Inc 3 | SRS |
-| NFR-REL-02 | Nghiệp vụ quan trọng chạy trong transaction | Gây lỗi giữa chừng khi tạo trẻ + gắn phụ huynh, hoặc khi hoàn tất đón trẻ + check-out → không còn dữ liệu dở dang | Test tích hợp | TC-REL-… | Inc 2, 3, 6 | SRS |
-| NFR-REL-03 | Có backup database | Tạo backup, xóa dữ liệu thử, **khôi phục** và đối chiếu | Script backup/restore | TC-REL-… | Tuần 11 | SRS |
+| NFR-REL-01 | Không mất dữ liệu điểm danh; không tạo bản ghi trùng (trẻ, ngày), kể cả khi gửi đồng thời | Gửi 2 yêu cầu điểm danh song song → chỉ 1 bản ghi | Test đồng thời + ràng buộc DB | TC-REL-02 | Inc 3 | SRS |
+| NFR-REL-02 | Nghiệp vụ quan trọng chạy trong transaction | Gây lỗi giữa chừng khi tạo trẻ + gắn phụ huynh, hoặc khi hoàn tất đón trẻ + check-out → không còn dữ liệu dở dang | Test tích hợp | TC-REL-01 | Inc 2, 3, 6 | SRS |
+| NFR-REL-03 | Có backup database | Tạo backup, xóa dữ liệu thử, **khôi phục** và đối chiếu | Script backup/restore | TC-REL-03 | Tuần 11 | SRS |
 
 ## Khả năng mở rộng
 
@@ -51,9 +51,9 @@ Cột "Nguồn": **SRS** = yêu cầu có trong SRS; **Kế hoạch** = ngưỡn
 |---|---|---|---|---|---|---|
 | NFR-MAIN-01 | Kiến trúc Modular Monolith, code chia module | Xem cấu trúc thư mục `backend/src` | Kiểm tra tay | — | Tuần 1–2, tuần 11 | SRS |
 | NFR-MAIN-02 | Mã nguồn tuân thủ clean code | Lint và Prettier chạy trong CI; review PR | CI, review PR | — | Mỗi Inc | SRS |
-| NFR-MAIN-03 | Có tài liệu API | Trang Swagger / `openapi.yaml` đầy đủ | Kiểm tra tay | — | Mỗi Inc, tuần 11 | SRS |
+| NFR-MAIN-03 | Có tài liệu API | Trang Swagger / `openapi.yaml` đầy đủ | Kiểm tra tay | TC-SYS-04 | Mỗi Inc, tuần 11 | SRS |
 | NFR-MAIN-04 | Có kiểm thử tự động | CI chạy unit, integration, E2E trên mỗi PR | CI | — | Mỗi Inc | SRS |
-| NFR-MAIN-05 | Có ghi log hệ thống; log không chứa mật khẩu, khóa bí mật, chi tiết sức khỏe | Xem log khi chạy test | Kiểm tra tay + grep log | TC-SEC-… | Inc 4, tuần 11 | SRS |
+| NFR-MAIN-05 | Có ghi log hệ thống; log không chứa mật khẩu, khóa bí mật, chi tiết sức khỏe | Xem log khi chạy test | Kiểm tra tay + grep log | TC-SEC-09 | Inc 4, tuần 11 | SRS |
 
 ## Đề xuất bổ sung (chưa có trong SRS)
 
