@@ -17,6 +17,7 @@
     "migration:generate": "typeorm-ts-node-commonjs migration:generate src/database/migrations/Schema -d src/database/data-source.ts",
     "migration:create": "typeorm-ts-node-commonjs migration:create src/database/migrations/Schema",
     "migration:revert": "typeorm-ts-node-commonjs -d src/database/data-source.ts migration:revert",
+    "db:import-mock": "ts-node src/database/import-mock-data.ts",
     "lint": "oxlint --type-aware src/ test/",
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch",

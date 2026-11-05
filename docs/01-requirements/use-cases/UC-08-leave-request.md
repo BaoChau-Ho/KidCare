@@ -1,45 +1,29 @@
-# UC-08 ? G?i y?u c?u ngh? h?c
+# UC-08 — Gửi yêu cầu nghỉ học
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-08 |
-| T?c nh?n ch?nh | Ph? huynh |
-| Y?u c?u li?n quan | FR-ATT-07 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-08 |
+| Tác nhân | Phụ huynh |
+| Yêu cầu | FR-ATT-07 |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Ph? huynh g?i ??n xin ngh? cho tr? trong m?t ho?c nhi?u ng?y; gi?o vi?n nh?n ???c th?ng b?o.
+Phụ huynh báo ngày nghỉ của trẻ đã liên kết để giáo viên biết trước.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Ph? huynh ??ng nh?p v? ???c li?n k?t v?i tr?.
+1. Chọn trẻ, ngày bắt đầu/kết thúc và lý do.
+2. Backend xác minh quyền phụ huynh, khoảng ngày và yêu cầu trùng.
+3. Lưu yêu cầu, thông báo giáo viên phụ trách và trả trạng thái.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. Ch?n tr?, ng?y b?t ??u/k?t th?c v? l? do.
-2. Backend x?c minh quy?n ph? huynh, ng?y h?p l? v? kh?ng tr?ng ??n.
-3. L?u y?u c?u PENDING.
-4. T?o th?ng b?o cho gi?o vi?n l?p.
+Ngày quá khứ, ngày kết thúc trước ngày bắt đầu hoặc đơn trùng bị từ chối. Phụ huynh không được gửi đơn cho trẻ chưa liên kết.
 
-## Lu?ng thay th? v? l?i
+## API và quyết định
 
-Ng?y qu? kh?, kho?ng ng?y ??o ng??c ho?c tr?ng ng?y b? t? ch?i; ph? huynh kh?c kh?ng ???c g?i cho tr? n?y.
+`POST /leave-requests`, `GET /leave-requests`; OpenAPI còn mô tả approve/reject. Use case nguồn không chốt việc duyệt: nhóm cần quyết định đơn có hiệu lực ngay hay chờ giáo viên.
 
-## API d? ki?n
+## Tiêu chí chấp nhận
 
-POST /leave-requests; GET /leave-requests; POST ho?c PATCH /leave-requests/{requestId}/approve; POST ho?c PATCH /leave-requests/{requestId}/reject
-
-## Quy t?c quy?n v? d? li?u
-
-JWT; ph? huynh ch? t?o/xem ??n cho con ?? li?n k?t; gi?o vi?n/qu?n l? x? l? theo quy?n l?p. Quy?t ??nh c? c?n duy?t hay ??n t? c? hi?u l?c c?n ch?t v? UC ngu?n ch?a m? t? duy?t.
-
-## Ti?u ch? ch?p nh?n
-
-Ng?y h?p l?; duplicate b? ch?n; th?ng b?o ??n ??ng gi?o vi?n; tr?ng th?i ??n v? ?nh h??ng attendance nh?t qu?n.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Ngày hợp lệ; đơn trùng bị chặn; thông báo đến đúng lớp; quyền phụ huynh kiểm tra ở backend.

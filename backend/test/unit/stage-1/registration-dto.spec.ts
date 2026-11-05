@@ -11,7 +11,7 @@ const valid = {
   fullName: 'Nguyễn Văn A',
   email: 'parent@demo.com',
   phone: '0912345678',
-  role: 'parent',
+  role: 'PARENT',
   nationalId: '012345678901',
   password: 'Password@123',
 };
@@ -88,8 +88,8 @@ describe('GĐ1 · CreateRegistrationRequestDto', () => {
     expect(await check({ phone })).toEqual(expected);
   });
 
-  it.each(['parent', 'teacher', 'medical', 'manager'])(
-    'UT-DTO-REG-09 vai trò "%s" được đăng ký',
+  it.each(['PARENT', 'TEACHER', 'MEDICAL_STAFF', 'MANAGER'])(
+    'UT-DTO-REG-09 role "%s" được đăng ký',
     async (role) => {
       expect(await check({ role })).toEqual([]);
     },

@@ -5,12 +5,16 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { RegistrationRequestsModule } from './registration-requests/registration-requests.module';
 import { UsersModule } from './users/users.module';
+import { ClassesModule } from './classes/classes.module';
+import { ChildrenModule } from './children/children.module';
 
 @Module({
   imports: [
     DatabaseModule,
     AuthModule,
     UsersModule,
+    ClassesModule,
+    ChildrenModule,
     HealthModule,
     RegistrationRequestsModule,
   ],

@@ -1,46 +1,31 @@
-# UC-12 ? X?c nh?n ??n tr?
+# UC-12 — Xác nhận đón trẻ
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-12 |
-| T?c nh?n ch?nh | Gi?o vi?n |
-| Y?u c?u li?n quan | FR-PICK-02 ??n FR-PICK-05 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-12 |
+| Tác nhân | Giáo viên |
+| Yêu cầu | FR-PICK-02 đến FR-PICK-05 |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Gi?o vi?n ??i chi?u ng??i ??n, duy?t/t? ch?i y?u c?u v? x?c nh?n ?? giao tr?.
+Giáo viên đối chiếu người đến đón, duyệt/từ chối yêu cầu, rồi xác nhận đã giao trẻ.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Gi?o vi?n ??ng nh?p, thu?c l?p c?a tr?; c? y?u c?u ??n h?p l?.
+1. Xem yêu cầu trong ngày của lớp.
+2. Đối chiếu danh tính người đón.
+3. Duyệt hoặc từ chối kèm lý do.
+4. Khi giao trẻ, hoàn tất yêu cầu, ghi verifier/time và thực hiện check-out UC-06.
+5. Thông báo phụ huynh.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. Xem y?u c?u trong ng?y c?a l?p.
-2. ??i chi?u danh t?nh ng??i ??n ??n.
-3. Duy?t ho?c t? ch?i k?m l? do.
-4. Khi giao tr?, ho?n t?t y?u c?u v? ghi nh?n check-out.
-5. Ghi actor/th?i ?i?m v? th?ng b?o ph? huynh.
+Không tìm thấy yêu cầu hoặc giấy tờ không khớp thì không giao trẻ; yêu cầu đã được người khác xử lý trả conflict.
 
-## Lu?ng thay th? v? l?i
+## API và quyền
 
-Kh?ng c? y?u c?u kh?p th? kh?ng giao tr?; th?ng tin kh?ng kh?p th? REJECTED; y?u c?u ?? x? l? ??ng th?i tr? conflict.
+`GET /pickup-requests`, `PATCH /pickup-requests/{requestId}/approve|reject|complete`. Chỉ giáo viên được phân công lớp xử lý. Hoàn tất pickup và check-out phải nguyên tử.
 
-## API d? ki?n
+## Tiêu chí chấp nhận
 
-GET /pickup-requests; PATCH /pickup-requests/{requestId}/approve; PATCH /pickup-requests/{requestId}/reject; PATCH /pickup-requests/{requestId}/complete
-
-## Quy t?c quy?n v? d? li?u
-
-JWT + TEACHER ???c gi?i h?n l?p. Chuy?n tr?ng th?i nguy?n t?; ho?n t?t ph?i t?ch h?p check-out UC-06.
-
-## Ti?u ch? ch?p nh?n
-
-Kh?ng ho?n t?t hai l?n; ch? gi?o vi?n ??ng l?p x? l?; check-out v? pickup ho?n t?t nh?t qu?n; audit ??y ??.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Không xử lý hoàn tất hai lần; check-out khớp; mọi thao tác có actor/time; lớp ngoài phạm vi bị chặn.

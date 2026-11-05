@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 export default function Modal({ title, onClose, children }) {
   const box = useRef(null)
   const closeRef = useRef(onClose)
-  closeRef.current = onClose
+  useEffect(() => { closeRef.current = onClose })
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && closeRef.current()

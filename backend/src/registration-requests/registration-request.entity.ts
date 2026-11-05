@@ -4,11 +4,19 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import type { UserRole } from '../users/user.entity';
+
+export type RegistrationRequestRole = Exclude<UserRole, 'ADMIN'>;
+export type RegistrationRequestStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'COMPLETED';
 
 @Entity('registration_requests')
 export class RegistrationRequest {
-  @PrimaryGeneratedColumn()
-  id!: number;
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
   @Column({ name: 'full_name', type: 'varchar', length: 100 })
   fullName!: string;
@@ -20,13 +28,13 @@ export class RegistrationRequest {
   phone!: string;
 
   @Column({ type: 'varchar', length: 30 })
-  role!: string;
+  role!: RegistrationRequestRole;
 
   @Column({ name: 'national_id', type: 'varchar', length: 12 })
   nationalId!: string;
 
-  @Column({ type: 'varchar', length: 20, default: 'pending' })
-  status!: string;
+  @Column({ type: 'varchar', length: 20, default: 'PENDING' })
+  status!: RegistrationRequestStatus;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

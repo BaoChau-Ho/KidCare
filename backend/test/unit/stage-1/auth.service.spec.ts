@@ -32,8 +32,8 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
   email: 'parent@demo.com',
   passwordHash: 'stored-hash',
   fullName: 'Nguyễn Văn A',
-  role: 'parent',
-  status: 'active',
+  role: 'PARENT',
+  status: 'ACTIVE',
   phone: '0912345678',
   nationalId: '012345678901',
   createdAt: new Date('2026-01-01T00:00:00Z'),
@@ -43,13 +43,13 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
 const makeRequest = (
   overrides: Partial<RegistrationRequest> = {},
 ): RegistrationRequest => ({
-  id: 1,
+  id: '5f1d7c2a-3b4e-4c6d-8e9f-0a1b2c3d4e5f',
   fullName: 'Nguyễn Văn A',
   email: 'parent@demo.com',
   phone: '0912345678',
-  role: 'parent',
+  role: 'PARENT',
   nationalId: '012345678901',
-  status: 'approved',
+  status: 'APPROVED',
   createdAt: new Date('2026-11-01T00:00:00Z'),
   rejectionReason: null,
   passwordSetupTokenHash: 'token-hash',
@@ -129,7 +129,7 @@ describe('GĐ1 · AuthService', () => {
 
     it('UT-LOGIN-04 tài khoản chờ duyệt nhưng sai mật khẩu → vẫn là INVALID_CREDENTIALS', async () => {
       usersRepository.findOne.mockResolvedValue(
-        makeUser({ status: 'pending' }),
+        makeUser({ status: 'INACTIVE' }),
       );
       mockedArgon2.verify.mockResolvedValue(false);
 
@@ -142,7 +142,7 @@ describe('GĐ1 · AuthService', () => {
 
     it('UT-LOGIN-05 tài khoản chờ duyệt, đúng mật khẩu → 403 ACCOUNT_PENDING, không cấp token', async () => {
       usersRepository.findOne.mockResolvedValue(
-        makeUser({ status: 'pending' }),
+        makeUser({ status: 'INACTIVE' }),
       );
       mockedArgon2.verify.mockResolvedValue(true);
 
@@ -156,7 +156,7 @@ describe('GĐ1 · AuthService', () => {
 
     it('UT-LOGIN-06 tài khoản bị vô hiệu hóa → 403 ACCOUNT_DISABLED, không cấp token', async () => {
       usersRepository.findOne.mockResolvedValue(
-        makeUser({ status: 'disabled' }),
+        makeUser({ status: 'LOCKED' }),
       );
       mockedArgon2.verify.mockResolvedValue(true);
 
@@ -211,7 +211,7 @@ describe('GĐ1 · AuthService', () => {
       const expectedHash = createHash('sha256').update('abc').digest('hex');
       expect(requestRepository.findOneBy).toHaveBeenCalledWith({
         passwordSetupTokenHash: expectedHash,
-        status: 'approved',
+        status: 'APPROVED',
       });
     });
 
@@ -310,15 +310,15 @@ describe('GĐ1 · AuthService', () => {
           expect.objectContaining({
             email: 'parent@demo.com',
             passwordHash: 'new-hash',
-            role: 'parent',
-            status: 'active',
+            role: 'PARENT',
+            status: 'ACTIVE',
           }),
         );
         expect(
           JSON.stringify(userRepositoryInTransaction.create.mock.calls),
         ).not.toContain(PASSWORD);
         expect(request).toMatchObject({
-          status: 'completed',
+          status: 'COMPLETED',
           passwordSetupTokenHash: null,
           passwordSetupExpiresAt: null,
         });

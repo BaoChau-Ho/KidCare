@@ -1,45 +1,29 @@
-# UC-11 ? ??ng k? ng??i ??n tr?
+# UC-11 — Đăng ký người đón trẻ
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-11 |
-| T?c nh?n ch?nh | Ph? huynh |
-| Y?u c?u li?n quan | FR-PICK-01 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-11 |
+| Tác nhân | Phụ huynh |
+| Yêu cầu | FR-PICK-01 |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Ph? huynh ??ng k? tr??c ng??i ???c ph?p ??n tr? ?? gi?o vi?n x?c minh.
+Phụ huynh đăng ký trước người được phép đón trẻ đã liên kết với tài khoản.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Ph? huynh ??ng nh?p v? ???c li?n k?t v?i tr?.
+1. Nhập trẻ, người đón, giấy tờ và thời gian dự kiến.
+2. Backend xác minh quyền, kiểm tra dữ liệu và thời gian.
+3. Tạo yêu cầu PENDING, thông báo giáo viên lớp.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. Ch?n tr?, ng??i ??n, th?ng tin gi?y t? v? th?i gian d? ki?n.
-2. Backend x?c th?c quan h?, validate d? li?u v? th?i gian.
-3. L?u y?u c?u PENDING.
-4. Th?ng b?o cho gi?o vi?n l?p.
+Thiếu thông tin hoặc thời gian trong quá khứ bị từ chối. Phụ huynh có thể hủy khi yêu cầu còn PENDING.
 
-## Lu?ng thay th? v? l?i
+## API và bảo mật
 
-Th?ng tin thi?u ho?c th?i gian qu? kh? b? t? ch?i; ph? huynh c? th? h?y khi c?n PENDING.
+`POST/GET /pickup-requests`, `PATCH /pickup-requests/{requestId}/cancel`. Chỉ phụ huynh liên kết mới tạo/hủy; thông tin giấy tờ chỉ trả cho người có quyền xác minh.
 
-## API d? ki?n
+## Tiêu chí chấp nhận
 
-POST /pickup-requests; GET /pickup-requests; PATCH /pickup-requests/{requestId}/cancel
-
-## Quy t?c quy?n v? d? li?u
-
-JWT + PARENT; ch? t?o/h?y y?u c?u cho tr? ???c li?n k?t; ch? ng??i c? quy?n l?p ???c xem th?ng tin ??n. B?o v? d? li?u gi?y t?.
-
-## Ti?u ch? ch?p nh?n
-
-Y?u c?u c? tr?ng th?i PENDING; h?y ch? khi cho ph?p; th?ng b?o ??ng l?p; th?ng tin nh?y c?m kh?ng l? ? danh s?ch kh?ng li?n quan.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Trạng thái chuyển hợp lệ; yêu cầu hủy không thể tiếp tục duyệt; thông báo đúng lớp; dữ liệu định danh không bị lộ sang tài khoản khác.

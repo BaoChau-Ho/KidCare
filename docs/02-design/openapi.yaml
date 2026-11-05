@@ -4,7 +4,8 @@ info:
   version: 0.1.0
   description: |
     Hợp đồng API thiết kế theo roadmap và các use case UC-01 đến UC-15.
-    Đây là đặc tả mục tiêu; hiện backend mới triển khai GET /health và GET /health/ready.
+    Backend đã có API xác thực, đăng ký, quản lý người dùng, audit log, lớp và hồ sơ trẻ;
+    các use case còn lại tiếp tục được triển khai theo roadmap.
     Cập nhật đặc tả cùng pull request khi thay đổi API.
 servers:
   - url: http://localhost:3000
@@ -14,6 +15,7 @@ tags:
   - name: Auth
   - name: Registration Requests
   - name: Users
+  - name: Audit Logs
   - name: Children
   - name: Classes
   - name: Attendance
@@ -304,8 +306,12 @@ paths:
     get:
       tags: [Users]
       operationId: listUsers
-      summary: Admin xem tài khoản có lọc và phân trang
-      description: Chỉ ADMIN. Không trả password hash hoặc refresh token.
+      summary: Admin quản lý tài khoản hoặc Manager tra cứu phụ huynh/giáo viên
+      description: |-
+        ADMIN được xem danh sách tài khoản theo bộ lọc.
+        MANAGER chỉ được tra cứu user ACTIVE với role=TEACHER hoặc role=PARENT để phục vụ UC-04/UC-05;
+        request của MANAGER bắt buộc có role là TEACHER hoặc PARENT. MANAGER không được dùng endpoint này để xem role khác.
+        Response không bao giờ chứa password hash, token hoặc thông tin xác thực.
       parameters:
         - { $ref: '#/components/parameters/SearchQuery' }
         - name: role
@@ -318,7 +324,7 @@ paths:
         - { $ref: '#/components/parameters/Limit' }
       responses:
         '200':
-          description: Danh sách tài khoản
+          description: Danh sách tài khoản theo phạm vi của role gọi API
           content:
             application/json:
               schema: { $ref: '#/components/schemas/UserPage' }
@@ -420,6 +426,38 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+
+  /audit-logs:
+    get:
+      tags: [Audit Logs]
+      operationId: listAuditLogs
+      summary: Admin tra cứu nhật ký thao tác quản trị
+      description: Chỉ ADMIN. Không ghi/trả password, token hoặc dữ liệu bí mật; oldValue/newValue phải được lọc dữ liệu nhạy cảm.
+      parameters:
+        - name: actorUserId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: action
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: resourceType
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: resourceId
+          in: query
+          schema: { type: string, format: uuid }
+        - { $ref: '#/components/parameters/FromDate' }
+        - { $ref: '#/components/parameters/ToDate' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Nhật ký mới nhất, có phân trang
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditLogPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
   /children:
     get:
@@ -1586,7 +1624,7 @@ components:
       enum: [ACTIVE, LOCKED, INACTIVE]
     RegistrationRequestStatus:
       type: string
-      enum: [PENDING, APPROVED, REJECTED]
+      enum: [PENDING, APPROVED, REJECTED, COMPLETED]
     ChildStatus:
       type: string
       enum: [ACTIVE, INACTIVE, WITHDRAWN]
@@ -1617,6 +1655,36 @@ components:
         status: { $ref: '#/components/schemas/UserStatus' }
         createdAt: { type: string, format: date-time }
       required: [id, email, fullName, role, status, createdAt]
+
+    AuditLog:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        actorUserId: { type: [string, 'null'], format: uuid }
+        actorName: { type: [string, 'null'] }
+        action: { type: string }
+        resourceType: { type: string }
+        resourceId: { type: string, format: uuid }
+        oldValue:
+          type: [object, 'null']
+          additionalProperties: true
+          description: Đã loại bỏ password, token và trường nhạy cảm.
+        newValue:
+          type: [object, 'null']
+          additionalProperties: true
+          description: Đã loại bỏ password, token và trường nhạy cảm.
+        ipAddress: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+      required: [id, action, resourceType, resourceId, createdAt]
+
+    AuditLogPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AuditLog' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
 
     RegistrationRequest:
       type: object
@@ -1663,9 +1731,9 @@ components:
     RegisterRequest:
       type: object
       properties:
-        fullName: { type: string, minLength: 1, maxLength: 150 }
+        fullName: { type: string, minLength: 1, maxLength: 100 }
         email: { type: string, format: email, maxLength: 254 }
-        phone: { type: string, maxLength: 30 }
+        phone: { type: string, maxLength: 20 }
       required: [fullName, email]
 
     SetPasswordRequest:
@@ -1710,9 +1778,9 @@ components:
     CreateUserRequest:
       type: object
       properties:
-        fullName: { type: string, minLength: 1, maxLength: 150 }
+        fullName: { type: string, minLength: 1, maxLength: 100 }
         email: { type: string, format: email }
-        phone: { type: string, maxLength: 30 }
+        phone: { type: string, maxLength: 20 }
         temporaryPassword: { type: string, format: password, minLength: 8, maxLength: 128 }
         role: { $ref: '#/components/schemas/UserRole' }
       required: [fullName, email, temporaryPassword, role]
@@ -1720,14 +1788,14 @@ components:
     UpdateUserRequest:
       type: object
       properties:
-        fullName: { type: string, minLength: 1, maxLength: 150 }
-        phone: { type: [string, 'null'], maxLength: 30 }
+        fullName: { type: string, minLength: 1, maxLength: 100 }
+        phone: { type: [string, 'null'], maxLength: 20 }
 
     UpdateProfileRequest:
       type: object
       properties:
-        fullName: { type: string, minLength: 1, maxLength: 150 }
-        phone: { type: [string, 'null'], maxLength: 30 }
+        fullName: { type: string, minLength: 1, maxLength: 100 }
+        phone: { type: [string, 'null'], maxLength: 20 }
 
     PageInfo:
       type: object
@@ -1757,7 +1825,20 @@ components:
         teacherUserIds:
           type: array
           items: { type: string, format: uuid }
-      required: [id, name, academicYear, status]
+        teachers:
+          type: array
+          description: Hồ sơ tóm tắt giáo viên đang được phân công.
+          items: { $ref: '#/components/schemas/TeacherSummary' }
+        childCount: { type: integer, minimum: 0 }
+      required: [id, name, academicYear, status, teachers, childCount]
+
+    TeacherSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: string, format: email }
+      required: [id, fullName]
 
     CreateClassRequest:
       type: object
@@ -1798,12 +1879,27 @@ components:
         gender: { type: string, enum: [MALE, FEMALE, OTHER] }
         address: { type: [string, 'null'] }
         avatarUrl: { type: [string, 'null'], format: uri }
-        classId: { type: [string, 'null'], format: uuid }
+        classId: { type: string, format: uuid }
+        className: { type: [string, 'null'] }
         status: { $ref: '#/components/schemas/ChildStatus' }
         parentUserIds:
+          deprecated: true
+          description: Chỉ giữ để tương thích client cũ; dùng parents để hiển thị tên và quan hệ.
           type: array
           items: { type: string, format: uuid }
-      required: [id, name, dateOfBirth, gender, status]
+        parents:
+          type: array
+          description: Tài khoản phụ huynh liên kết, kèm quan hệ và tên hiển thị.
+          items: { $ref: '#/components/schemas/ChildParentSummary' }
+      required: [id, name, dateOfBirth, gender, status, className, parents]
+
+    ChildParentSummary:
+      type: object
+      properties:
+        parentUserId: { type: string, format: uuid }
+        fullName: { type: string }
+        relationship: { $ref: '#/components/schemas/Relationship' }
+      required: [parentUserId, fullName, relationship]
 
     CreateChildRequest:
       type: object
@@ -1812,6 +1908,7 @@ components:
         dateOfBirth: { type: string, format: date }
         gender: { type: string, enum: [MALE, FEMALE, OTHER] }
         address: { type: string, maxLength: 500 }
+        avatarUrl: { type: string, format: uri, maxLength: 2048 }
         classId: { type: string, format: uuid }
       required: [name, dateOfBirth, gender, classId]
 
@@ -1822,6 +1919,7 @@ components:
         dateOfBirth: { type: string, format: date }
         gender: { type: string, enum: [MALE, FEMALE, OTHER] }
         address: { type: [string, 'null'], maxLength: 500 }
+        avatarUrl: { type: [string, 'null'], format: uri, maxLength: 2048 }
         classId: { type: string, format: uuid }
         status: { $ref: '#/components/schemas/ChildStatus' }
 

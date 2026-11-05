@@ -19,13 +19,14 @@ jest.mock('argon2', () => ({ hash: jest.fn(), verify: jest.fn() }));
 const mockedArgon2 = jest.mocked(argon2);
 
 const PASSWORD = 'Password@123';
+const REQUEST_ID = '5f1d7c2a-3b4e-4c6d-8e9f-0a1b2c3d4e5f';
 const LOCK = { mode: 'pessimistic_write' };
 
 const input = {
   fullName: 'Nguyễn Văn A',
   email: 'parent@demo.com',
   phone: '0912345678',
-  role: 'parent',
+  role: 'PARENT',
   nationalId: '012345678901',
   password: PASSWORD,
 };
@@ -33,13 +34,13 @@ const input = {
 const makeRequest = (
   overrides: Partial<RegistrationRequest> = {},
 ): RegistrationRequest => ({
-  id: 1,
+  id: REQUEST_ID,
   fullName: 'Nguyễn Văn A',
   email: 'parent@demo.com',
   phone: '0912345678',
-  role: 'parent',
+  role: 'PARENT',
   nationalId: '012345678901',
-  status: 'pending',
+  status: 'PENDING',
   createdAt: new Date('2026-11-01T00:00:00Z'),
   rejectionReason: null,
   passwordSetupTokenHash: null,
@@ -52,8 +53,8 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
   email: 'parent@demo.com',
   passwordHash: 'hashed',
   fullName: 'Nguyễn Văn A',
-  role: 'parent',
-  status: 'pending',
+  role: 'PARENT',
+  status: 'INACTIVE',
   phone: '0912345678',
   nationalId: '012345678901',
   createdAt: new Date('2026-11-01T00:00:00Z'),
@@ -73,7 +74,7 @@ describe('GĐ1 · RegistrationRequestsService', () => {
     userRepository = createRepositoryMock();
     requestRepository = createRepositoryMock();
     requestRepository.save.mockImplementation(async (entity: object) => ({
-      id: 7,
+      id: REQUEST_ID,
       ...entity,
     }));
     dataSource = createDataSourceMock(
@@ -91,16 +92,16 @@ describe('GĐ1 · RegistrationRequestsService', () => {
     it('UT-REG-01 đăng ký thành công → tạo tài khoản và yêu cầu ở trạng thái chờ', async () => {
       const result = await service.submit(input);
 
-      expect(result).toEqual({ id: 7, status: 'pending' });
+      expect(result).toEqual({ id: REQUEST_ID, status: 'PENDING' });
       expect(userRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          status: 'pending',
+          status: 'INACTIVE',
           passwordHash: 'hashed',
-          role: 'parent',
+          role: 'PARENT',
         }),
       );
       expect(requestRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'pending' }),
+        expect.objectContaining({ status: 'PENDING' }),
       );
     });
 
@@ -138,7 +139,7 @@ describe('GĐ1 · RegistrationRequestsService', () => {
 
     it('UT-REG-04 email đã có tài khoản → 409 EMAIL_EXISTS', async () => {
       userRepository.findOneBy.mockImplementation(async (where: object) =>
-        'email' in where ? makeUser({ status: 'active' }) : null,
+        'email' in where ? makeUser({ status: 'ACTIVE' }) : null,
       );
 
       expectHttpError(
@@ -151,7 +152,7 @@ describe('GĐ1 · RegistrationRequestsService', () => {
 
     it('UT-REG-05 CCCD đã có tài khoản → 409 ID_EXISTS', async () => {
       userRepository.findOneBy.mockImplementation(async (where: object) =>
-        'nationalId' in where ? makeUser({ status: 'active' }) : null,
+        'nationalId' in where ? makeUser({ status: 'ACTIVE' }) : null,
       );
 
       expectHttpError(
@@ -191,11 +192,11 @@ describe('GĐ1 · RegistrationRequestsService', () => {
 
       expect(requestRepository.findOneBy).toHaveBeenCalledWith({
         email: 'parent@demo.com',
-        status: Not('rejected'),
+        status: Not('REJECTED'),
       });
       expect(requestRepository.findOneBy).toHaveBeenCalledWith({
         nationalId: '012345678901',
-        status: Not('rejected'),
+        status: Not('REJECTED'),
       });
     });
 
@@ -218,18 +219,18 @@ describe('GĐ1 · RegistrationRequestsService', () => {
   describe('approve', () => {
     it('UT-APPROVE-01 không tìm thấy yêu cầu → 404 REQUEST_NOT_FOUND', async () => {
       expectHttpError(
-        await getError(() => service.approve(1)),
+        await getError(() => service.approve(REQUEST_ID)),
         NotFoundException,
         'REQUEST_NOT_FOUND',
       );
     });
 
-    it.each(['approved', 'rejected', 'completed'])(
+    it.each(['APPROVED', 'REJECTED', 'COMPLETED'])(
       'UT-APPROVE-02 yêu cầu đã ở trạng thái %s → 409 REQUEST_ALREADY_REVIEWED',
       async (status) => {
         requestRepository.findOne.mockResolvedValue(makeRequest({ status }));
 
-        const error = await getError(() => service.approve(1));
+        const error = await getError(() => service.approve(REQUEST_ID));
 
         expectHttpError(error, ConflictException, 'REQUEST_ALREADY_REVIEWED');
       },
@@ -237,14 +238,14 @@ describe('GĐ1 · RegistrationRequestsService', () => {
 
     it.each([
       ['không có tài khoản', null],
-      ['tài khoản đã active', makeUser({ status: 'active' })],
+      ['tài khoản đã active', makeUser({ status: 'ACTIVE' })],
     ])(
       'UT-APPROVE-03 %s → 409 PENDING_ACCOUNT_NOT_FOUND',
       async (_case, user) => {
         requestRepository.findOne.mockResolvedValue(makeRequest());
         userRepository.findOne.mockResolvedValue(user);
 
-        const error = await getError(() => service.approve(1));
+        const error = await getError(() => service.approve(REQUEST_ID));
 
         expectHttpError(error, ConflictException, 'PENDING_ACCOUNT_NOT_FOUND');
       },
@@ -256,17 +257,17 @@ describe('GĐ1 · RegistrationRequestsService', () => {
       requestRepository.findOne.mockResolvedValue(request);
       userRepository.findOne.mockResolvedValue(user);
 
-      const result = await service.approve(1);
+      const result = await service.approve(REQUEST_ID);
 
-      expect(user.status).toBe('active');
+      expect(user.status).toBe('ACTIVE');
       expect(userRepository.save).toHaveBeenCalledWith(user);
       expect(request).toMatchObject({
-        status: 'approved',
+        status: 'APPROVED',
         rejectionReason: null,
       });
       expect(result).toEqual({
-        id: 1,
-        status: 'approved',
+        id: REQUEST_ID,
+        status: 'APPROVED',
         email: 'parent@demo.com',
       });
     });
@@ -275,10 +276,10 @@ describe('GĐ1 · RegistrationRequestsService', () => {
       requestRepository.findOne.mockResolvedValue(makeRequest());
       userRepository.findOne.mockResolvedValue(makeUser());
 
-      await service.approve(1);
+      await service.approve(REQUEST_ID);
 
       expect(requestRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
+        where: { id: REQUEST_ID },
         lock: LOCK,
       });
       expect(userRepository.findOne).toHaveBeenCalledWith({
@@ -290,17 +291,17 @@ describe('GĐ1 · RegistrationRequestsService', () => {
 
   describe('reject', () => {
     it('UT-REJECT-01 không tìm thấy yêu cầu → 404 REQUEST_NOT_FOUND', async () => {
-      const error = await getError(() => service.reject(1, 'Sai CCCD'));
+      const error = await getError(() => service.reject(REQUEST_ID, 'Sai CCCD'));
 
       expectHttpError(error, NotFoundException, 'REQUEST_NOT_FOUND');
     });
 
     it('UT-REJECT-02 yêu cầu đã xử lý → 409 REQUEST_ALREADY_REVIEWED', async () => {
       requestRepository.findOne.mockResolvedValue(
-        makeRequest({ status: 'approved' }),
+        makeRequest({ status: 'APPROVED' }),
       );
 
-      const error = await getError(() => service.reject(1, 'Sai CCCD'));
+      const error = await getError(() => service.reject(REQUEST_ID, 'Sai CCCD'));
 
       expectHttpError(error, ConflictException, 'REQUEST_ALREADY_REVIEWED');
     });
@@ -310,11 +311,11 @@ describe('GĐ1 · RegistrationRequestsService', () => {
       requestRepository.findOne.mockResolvedValue(makeRequest());
       userRepository.findOneBy.mockResolvedValue(pendingUser);
 
-      await service.reject(1, 'Sai CCCD');
+      await service.reject(REQUEST_ID, 'Sai CCCD');
 
       expect(userRepository.findOneBy).toHaveBeenCalledWith({
         email: 'parent@demo.com',
-        status: 'pending',
+        status: 'INACTIVE',
       });
       expect(userRepository.remove).toHaveBeenCalledWith(pendingUser);
     });
@@ -322,8 +323,8 @@ describe('GĐ1 · RegistrationRequestsService', () => {
     it('UT-REJECT-04 không có tài khoản đang chờ → vẫn từ chối, không xóa gì', async () => {
       requestRepository.findOne.mockResolvedValue(makeRequest());
 
-      await expect(service.reject(1, 'Sai CCCD')).resolves.toMatchObject({
-        status: 'rejected',
+      await expect(service.reject(REQUEST_ID, 'Sai CCCD')).resolves.toMatchObject({
+        status: 'REJECTED',
       });
       expect(userRepository.remove).not.toHaveBeenCalled();
     });
@@ -331,11 +332,11 @@ describe('GĐ1 · RegistrationRequestsService', () => {
     it('UT-REJECT-05 lý do được trim, yêu cầu chuyển rejected', async () => {
       requestRepository.findOne.mockResolvedValue(makeRequest());
 
-      const result = await service.reject(1, '  Sai CCCD  ');
+      const result = await service.reject(REQUEST_ID, '  Sai CCCD  ');
 
       expect(result).toEqual({
-        id: 1,
-        status: 'rejected',
+        id: REQUEST_ID,
+        status: 'REJECTED',
         rejectionReason: 'Sai CCCD',
       });
       expect(requestRepository.save).toHaveBeenCalledWith(

@@ -52,7 +52,7 @@ export class RegistrationRequestsService {
 
         const existingRequestByEmail = await requestRepository.findOneBy({
           email,
-          status: Not('rejected'),
+          status: Not('REJECTED'),
         });
         if (existingRequestByEmail) {
           throw new ConflictException({
@@ -63,7 +63,7 @@ export class RegistrationRequestsService {
 
         const existingRequestByNationalId = await requestRepository.findOneBy({
           nationalId,
-          status: Not('rejected'),
+          status: Not('REJECTED'),
         });
         if (existingRequestByNationalId) {
           throw new ConflictException({
@@ -77,7 +77,7 @@ export class RegistrationRequestsService {
           passwordHash,
           fullName: input.fullName.trim(),
           role: input.role as UserRole,
-          status: 'pending',
+          status: 'INACTIVE',
           phone: input.phone.trim(),
           nationalId,
         });
@@ -89,7 +89,7 @@ export class RegistrationRequestsService {
           phone: input.phone.trim(),
           role: input.role,
           nationalId,
-          status: 'pending',
+          status: 'PENDING',
         });
 
         return requestRepository.save(request);
@@ -134,7 +134,7 @@ export class RegistrationRequestsService {
     });
   }
 
-  async reject(id: number, reason: string) {
+  async reject(id: string, reason: string) {
     return this.dataSource.transaction(async (manager) => {
       const requestRepository = manager.getRepository(RegistrationRequest);
       const userRepository = manager.getRepository(User);
@@ -150,7 +150,7 @@ export class RegistrationRequestsService {
         });
       }
 
-      if (request.status !== 'pending') {
+      if (request.status !== 'PENDING') {
         throw new ConflictException({
           code: 'REQUEST_ALREADY_REVIEWED',
           message: 'Chỉ có thể từ chối yêu cầu đang chờ xử lý.',
@@ -159,11 +159,11 @@ export class RegistrationRequestsService {
 
       const pendingUser = await userRepository.findOneBy({
         email: request.email,
-        status: 'pending',
+        status: 'INACTIVE',
       });
       if (pendingUser) await userRepository.remove(pendingUser);
 
-      request.status = 'rejected';
+      request.status = 'REJECTED';
       request.rejectionReason = reason.trim();
       request.passwordSetupTokenHash = null;
       request.passwordSetupExpiresAt = null;
@@ -178,7 +178,7 @@ export class RegistrationRequestsService {
     });
   }
 
-  async approve(id: number) {
+  async approve(id: string) {
     return this.dataSource.transaction(async (manager) => {
       const requestRepository = manager.getRepository(RegistrationRequest);
       const userRepository = manager.getRepository(User);
@@ -194,7 +194,7 @@ export class RegistrationRequestsService {
         });
       }
 
-      if (request.status !== 'pending') {
+      if (request.status !== 'PENDING') {
         throw new ConflictException({
           code: 'REQUEST_ALREADY_REVIEWED',
           message: 'Chỉ có thể duyệt yêu cầu đang chờ xử lý.',
@@ -206,7 +206,7 @@ export class RegistrationRequestsService {
         lock: { mode: 'pessimistic_write' },
       });
 
-      if (!user || user.status !== 'pending') {
+      if (!user || user.status !== 'INACTIVE') {
         throw new ConflictException({
           code: 'PENDING_ACCOUNT_NOT_FOUND',
           message:
@@ -214,10 +214,10 @@ export class RegistrationRequestsService {
         });
       }
 
-      user.status = 'active';
+      user.status = 'ACTIVE';
       await userRepository.save(user);
 
-      request.status = 'approved';
+      request.status = 'APPROVED';
       request.rejectionReason = null;
       request.passwordSetupTokenHash = null;
       request.passwordSetupExpiresAt = null;

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // Kiểm thử giao diện theo vai trò (Stage 7): route theo vai trò, các luồng chính của UC-06..15, ô chọn tự vẽ.
 // Chạy: npx vitest run   (cần: npm i -D vitest jsdom @testing-library/react @testing-library/dom @testing-library/user-event)
 import { beforeEach, describe, expect, it, vi } from 'vitest'

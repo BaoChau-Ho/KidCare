@@ -21,8 +21,8 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
   email: 'parent@demo.com',
   passwordHash: 'stored-hash',
   fullName: 'Nguyễn Văn A',
-  role: 'parent',
-  status: 'active',
+  role: 'PARENT',
+  status: 'ACTIVE',
   phone: '0912345678',
   nationalId: '012345678901',
   createdAt: new Date('2026-01-01T00:00:00Z'),
@@ -113,7 +113,7 @@ describe('GĐ1 · JwtAuthGuard', () => {
     expectHttpError(error, UnauthorizedException, 'ACCOUNT_INACTIVE');
   });
 
-  it.each(['pending', 'disabled'] as const)(
+  it.each(['INACTIVE', 'LOCKED'] as const)(
     'UT-JWT-08 tài khoản ở trạng thái %s → 401 ACCOUNT_INACTIVE',
     async (status) => {
       usersRepository.findOne.mockResolvedValue(makeUser({ status }));

@@ -1,45 +1,29 @@
-# UC-15 ? Xem b?o c?o
+# UC-15 — Xem báo cáo
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-15 |
-| T?c nh?n ch?nh | Qu?n l? c? s? |
-| Y?u c?u li?n quan | FR-REP-01 ??n FR-REP-05 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-15 |
+| Tác nhân | Quản lý cơ sở |
+| Yêu cầu | FR-REP-01 đến FR-REP-05 |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Qu?n l? xem b?o c?o ?i?m danh, s?c kh?e v? ho?t ??ng, l?c theo l?p v? kho?ng ng?y.
+Quản lý xem báo cáo điểm danh, sức khỏe và hoạt động, lọc theo lớp và khoảng thời gian.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Qu?n l? ??ng nh?p; d? li?u nghi?p v? ?? c?.
+1. Chọn loại báo cáo, lớp và khoảng ngày.
+2. Backend validate bộ lọc/quyền và tổng hợp dữ liệu nguồn.
+3. Trả kết quả cho bảng/biểu đồ.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. Ch?n lo?i b?o c?o, l?p v? kho?ng th?i gian.
-2. Backend validate b? l?c v? quy?n.
-3. T?ng h?p t? c?c b?ng nghi?p v?.
-4. Tr? s? li?u d?ng cho b?ng/bi?u ??.
+Ngày bắt đầu sau ngày kết thúc bị từ chối; không có dữ liệu trả kết quả rỗng thay vì lỗi.
 
-## Lu?ng thay th? v? l?i
+## API và quyền
 
-Ng?y b?t ??u sau ng?y k?t th?c b? t? ch?i; kh?ng c? d? li?u tr? m?ng r?ng v? s? li?u 0 ph? h?p.
+`GET /reports/attendance`, `GET /reports/classes`, `GET /reports/health`; yêu cầu đăng nhập và role MANAGER theo phạm vi dữ liệu được phân quyền.
 
-## API d? ki?n
+## Tiêu chí chấp nhận
 
-GET /reports/attendance; GET /reports/classes; GET /reports/health
-
-## Quy t?c quy?n v? d? li?u
-
-JWT + MANAGER (ho?c role ???c nh?m cho ph?p); l?c m?i truy v?n theo ph?m vi c? s?/l?p. Ch? tr? s? li?u c?n thi?t, kh?ng l? d? li?u s?c kh?e c? nh?n.
-
-## Ti?u ch? ch?p nh?n
-
-K?t qu? kh?p d? li?u ngu?n; ng?y bi?n ??ng; kh?ng c? d? li?u x? l? r?; quy?n b?o c?o ???c ki?m tra.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Số liệu khớp dữ liệu nguồn; filter ngày/lớp chính xác; không lộ dữ liệu cá nhân sức khỏe nếu báo cáo chỉ cần số tổng hợp.

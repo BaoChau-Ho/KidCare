@@ -1,45 +1,30 @@
-# UC-07 ? Theo d?i t?nh h?nh c?a con
+# UC-07 — Theo dõi tình hình của con
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-07 |
-| T?c nh?n ch?nh | Ph? huynh |
-| Y?u c?u li?n quan | FR-ATT-04, FR-ATT-05, FR-HEALTH-04, FR-ACT-03 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-07 |
+| Tác nhân | Phụ huynh |
+| Yêu cầu | FR-ATT-04, FR-ATT-05, FR-HEALTH-04, FR-ACT-03 |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Ph? huynh xem t?ng quan ?i?m danh, s?c kh?e v? ho?t ??ng c?a c?c tr? ?? li?n k?t v?i t?i kho?n.
+Phụ huynh xem điểm danh, thông tin sức khỏe được phép và hoạt động của trẻ đã liên kết với tài khoản.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Ph? huynh ??ng nh?p; quan h? CHILD_PARENT ?? ???c t?o.
+1. Dashboard tải danh sách con đã liên kết.
+2. Phụ huynh chọn trẻ và xem trạng thái điểm danh hôm nay.
+3. Chọn lịch sử điểm danh, tóm tắt sức khỏe hoặc hoạt động.
+4. Backend kiểm tra quan hệ phụ huynh-trẻ trước mỗi truy vấn.
 
-## Lu?ng ch?nh
+## Ngoại lệ và bảo mật
 
-1. M? dashboard v? t?i danh s?ch con ?? li?n k?t.
-2. Ch?n m?t tr?.
-3. Xem t?ng quan h?m nay v? ch?n ?i?m danh, s?c kh?e ho?c ho?t ??ng.
-4. Backend x?c minh quan h? ph? huynh-tr? tr??c m?i truy v?n.
+Không có trẻ liên kết thì hiển thị hướng dẫn liên hệ nhà trường. ID trẻ không thuộc phụ huynh bị từ chối; không có dữ liệu hiển thị empty state.
 
-## Lu?ng thay th? v? l?i
+## API
 
-Ch?a li?n k?t tr? th? hi?n th? h??ng d?n li?n h? tr??ng; ID tr? kh?ng thu?c ph? huynh tr? 403/404; kh?ng c? d? li?u hi?n th? tr?ng th?i r?ng.
+Dùng `/children/{childId}/attendance/today`, `/children/{childId}/attendance`, `/children/{childId}/health-summary`, `/children/{childId}/activities` và API liệt kê trẻ trong phạm vi tài khoản.
 
-## API d? ki?n
+## Tiêu chí chấp nhận
 
-D?ng GET /children, GET /children/{childId}/attendance/today, GET /children/{childId}/attendance, GET /children/{childId}/health-summary, GET /children/{childId}/activities
-
-## Quy t?c quy?n v? d? li?u
-
-JWT + role PARENT; ki?m tra child_parents ? server cho t?ng request; ch? tr? tr??ng s?c kh?e ???c ph?p cho ph? huynh.
-
-## Ti?u ch? ch?p nh?n
-
-Ph? huynh xem ???c tr? ?? li?n k?t; ??i ID kh?ng ??c ???c d? li?u ng??i kh?c; empty states v? ph?n trang ho?t ??ng.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Phụ huynh chỉ đọc được trẻ đã liên kết; đổi ID trên URL không lấy được dữ liệu của gia đình khác; nội dung sức khỏe được giới hạn theo chính sách.
