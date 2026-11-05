@@ -15,10 +15,10 @@ describe('GĐ1 · AdminGuard', () => {
     guard.canActivate(createHttpContext({ user: { role } }));
 
   it('UT-ADMIN-01 admin được cho qua', () => {
-    expect(runAs('admin')()).toBe(true);
+    expect(runAs('ADMIN')()).toBe(true);
   });
 
-  it.each(['parent', 'teacher', 'medical', 'manager'])(
+  it.each(['PARENT', 'TEACHER', 'MEDICAL_STAFF', 'MANAGER'])(
     'UT-ADMIN-02 vai trò %s → 403 ADMIN_ONLY',
     async (role) => {
       expectHttpError(
