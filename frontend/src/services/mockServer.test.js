@@ -1,6 +1,7 @@
+// @vitest-environment jsdom
 // Kiểm thử quy tắc nghiệp vụ và phân quyền của mock server (Stage 7).
 // Chạy: npx vitest run   (cần: npm i -D vitest jsdom)
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockRequest } from './mockServer.js'
 import { resetMockDb } from './mockDb.js'
 import { saveSession } from './auth.js'
@@ -40,12 +41,21 @@ describe('UC-06 điểm danh', () => {
     expect((await call('GET', `/classes/${c1.id}/attendance`, { query: {} })).status).toBe(403)
   })
   it('check-in trùng ngày bị 409, check-out trước check-in bị 409, check-out hai lần bị 409', async () => {
-    teacher()
-    expect((await call('POST', '/attendance/check-out', { body: { childId: an.id, date: TODAY, checkOutTime: `${TODAY}T23:00` } })).code).toBe('NOT_CHECKED_IN')
-    expect((await call('POST', '/attendance/check-in', { body: { childId: an.id, checkInTime: `${TODAY}T00:01` } })).ok).toBe(true)
-    expect((await call('POST', '/attendance/check-in', { body: { childId: an.id } })).code).toBe('ATTENDANCE_EXISTS')
-    expect((await call('POST', '/attendance/check-out', { body: { childId: an.id, checkOutTime: `${TODAY}T00:02` } })).ok).toBe(true)
-    expect((await call('POST', '/attendance/check-out', { body: { childId: an.id } })).code).toBe('ALREADY_CHECKED_OUT')
+    // Dữ liệu mẫu tự check-in bé An lúc 07:55 hôm nay; cố định giờ 07:00 để bé chưa có bản ghi.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(`${TODAY}T07:00`))
+    try {
+      resetMockDb()
+      an = find((await call('GET', '/children', { query: { limit: 50 } })).data.items, 'Minh An')
+      teacher()
+      expect((await call('POST', '/attendance/check-out', { body: { childId: an.id, date: TODAY, checkOutTime: `${TODAY}T23:00` } })).code).toBe('NOT_CHECKED_IN')
+      expect((await call('POST', '/attendance/check-in', { body: { childId: an.id, checkInTime: `${TODAY}T00:01` } })).ok).toBe(true)
+      expect((await call('POST', '/attendance/check-in', { body: { childId: an.id } })).code).toBe('ATTENDANCE_EXISTS')
+      expect((await call('POST', '/attendance/check-out', { body: { childId: an.id, checkOutTime: `${TODAY}T00:02` } })).ok).toBe(true)
+      expect((await call('POST', '/attendance/check-out', { body: { childId: an.id } })).code).toBe('ALREADY_CHECKED_OUT')
+    } finally {
+      vi.useRealTimers()
+    }
   })
   it('giáo viên lớp khác, ngày tương lai, vai trò khác đều bị chặn', async () => {
     teacher()
