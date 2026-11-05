@@ -111,7 +111,7 @@ th, td { text-align: left; padding: .75rem .9rem; border-bottom: 1px solid var(-
 th { background: var(--mint); font-weight: 600; white-space: nowrap; }
 tr:last-child td { border-bottom: 0; }
 .empty { text-align: center; color: var(--muted); padding: 2rem; }
-.badge { padding: .15rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 600; text-transform: capitalize; }
+.badge { padding: .15rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 600; }
 .badge.pending { background: #fdf0d2; color: #7a5400; }
 .badge.approved { background: #d8ecf7; color: #124a6b; }
 .badge.active { background: var(--mint); color: var(--teal-dark); }

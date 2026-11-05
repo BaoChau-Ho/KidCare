@@ -231,7 +231,7 @@ function AuditPanel({ refreshKey }) {
                     <td>{l.actorEmail}</td>
                     <td>{ACTION_LABELS[l.action] ?? l.action}</td>
                     <td>{l.label}</td>
-                    <td className="muted">{diffText(l.before, l.after)}</td>
+                    <td className="muted">{diffText(l.before, l.after, l.resourceType)}</td>
                   </tr>
                 ))}
               </tbody>

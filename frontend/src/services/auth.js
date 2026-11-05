@@ -6,7 +6,7 @@
 // CHANGED (UC-03): sign in now also reads the accounts managed on /admin/users
 // (kho dùng chung trong mockDb.js). Accounts created, locked or re-roled there
 // take effect here immediately.
-import { loadDb as loadManaged, saveDb as saveManaged } from './mockDB.js'
+import { loadDb as loadManaged, saveDb as saveManaged } from './mockDb.js'
 
 export const ROLES = {
   parent: { label: 'Phụ huynh', home: '/parent' },
@@ -37,15 +37,30 @@ const TO_API = Object.fromEntries(Object.entries(API_ROLE).map(([k, v]) => [v, k
 const findManaged = (email) => loadManaged().users.find((u) => u.email === email) ?? null
 const managedPassword = (email) => loadManaged().credentials?.[email]
 
+const toManaged = (u) => ({
+  id: crypto.randomUUID(), fullName: u.fullName || u.email, email: u.email, phone: u.phone || null,
+  role: TO_API[u.role], status: 'ACTIVE', createdAt: u.createdAt || new Date().toISOString(),
+})
+
 /** An account activated through registration also shows up on the admin's account list */
 function upsertManaged(user) {
   const db = structuredClone(loadManaged())
   if (db.users.some((u) => u.email === user.email)) return
-  db.users.push({
-    id: crypto.randomUUID(), fullName: user.fullName || user.email, email: user.email, phone: user.phone || null,
-    role: TO_API[user.role], status: 'ACTIVE', createdAt: new Date().toISOString(),
-  })
+  db.users.push(toManaged(user))
   saveManaged(db)
+}
+
+/**
+ * Đồng bộ: thêm vào `db` (kho quản lý) mọi tài khoản đã kích hoạt qua /register mà chưa có trong đó,
+ * ví dụ tài khoản kích hoạt trước khi kho quản lý được tạo hoặc đặt lại. Trả về số tài khoản được thêm.
+ * Tài khoản đã có trong kho (kể cả bị khóa/ngừng hoạt động) không bị thêm lại.
+ */
+export function syncRegisteredInto(db) {
+  let added = 0
+  for (const u of readDb().users) {
+    if (u.status === 'active' && !u.seed && !db.users.some((x) => x.email === u.email)) { db.users.push(toManaged(u)); added += 1 }
+  }
+  return added
 }
 
 // ---------- tiny mock database ----------

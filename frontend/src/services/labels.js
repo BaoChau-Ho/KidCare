@@ -36,7 +36,7 @@ export const ACTION_LABELS = {
 const FIELD_LABELS = {
   fullName: 'Họ tên', phone: 'SĐT', email: 'Email', role: 'Vai trò', status: 'Trạng thái',
   name: 'Tên', academicYear: 'Năm học', dateOfBirth: 'Ngày sinh', gender: 'Giới tính',
-  height: 'Chiều cao', weight: 'Cân nặng', temperature: 'Nhiệt độ', checkInTime: 'Giờ đến', checkOutTime: 'Giờ về', active: 'Đang theo dõi',
+  height: 'Chiều cao', weight: 'Cân nặng', temperature: 'Nhiệt độ', checkInTime: 'Giờ đến', checkOutTime: 'Giờ về', active: 'Theo dõi',
   recipients: 'Số người nhận', vaccine: 'Vắc-xin', visit: 'Lần khám', allergen: 'Tác nhân', person: 'Người đón', time: 'Thời gian', participants: 'Số trẻ tham gia', from: 'Từ ngày', to: 'Đến ngày',
   address: 'Địa chỉ', class: 'Lớp', teacher: 'Giáo viên', parent: 'Phụ huynh', relationship: 'Quan hệ',
 }
@@ -53,12 +53,24 @@ export const fmtDate = (d) => {
 }
 export const fmtDateTime = (d) => new Date(d).toLocaleString('vi-VN')
 
-export const diffText = (before, after) => {
+// Đổi giá trị thô của hệ thống (LOCKED, TEACHER, 2026-11-04...) sang tiếng Việt để hiển thị trong nhật ký.
+// `status` phụ thuộc loại đối tượng (tài khoản, lớp, trẻ...) nên cần resourceType.
+const STATUS_BY_RESOURCE = () => ({ user: USER_STATUS, class: CLASS_STATUS, child: CHILD_STATUS, attendance: ATTENDANCE_STATUS, leave: LEAVE_STATUS, pickup: PICKUP_STATUS })
+const fmtAuditValue = (key, v, resourceType) => {
+  if (v == null || v === '') return '\u2014'
+  if (typeof v === 'boolean') return v ? 'Đang theo dõi' : 'Ngừng theo dõi'
+  const maps = { role: ROLE_LABELS, gender: GENDER, severity: SEVERITY, relationship: RELATIONSHIP, status: STATUS_BY_RESOURCE()[resourceType] }
+  if (maps[key]?.[v]) return maps[key][v]
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(v))) return fmtDate(v)
+  return String(v)
+}
+export const diffText = (before, after, resourceType) => {
   if (!after) return ''
   return Object.keys(after)
     .map((k) => {
       const name = FIELD_LABELS[k] ?? k
-      return before && k in before ? `${name}: ${before[k] ?? '\u2014'} \u2192 ${after[k] ?? '\u2014'}` : `${name}: ${after[k] ?? '\u2014'}`
+      const to = fmtAuditValue(k, after[k], resourceType)
+      return before && k in before ? `${name}: ${fmtAuditValue(k, before[k], resourceType)} \u2192 ${to}` : `${name}: ${to}`
     })
     .join('; ')
 }

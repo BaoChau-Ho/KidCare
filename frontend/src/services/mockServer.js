@@ -1,9 +1,9 @@
 // Mock "backend" cho UC-03/04/05: mô phỏng đúng đường dẫn, mã lỗi và dạng dữ liệu trong openapi.yaml.
 // Dữ liệu lưu trong localStorage. Mỗi request chạy trên bản sao; lỗi thì bỏ bản sao (giống rollback transaction).
-import { getSession } from './auth.js'
+import { getSession, syncRegisteredInto } from './auth.js'
 import { ApiError } from './apiError.js'
 import { normRole } from './labels.js'
-import { loadDb, saveDb } from './mockDB.js'
+import { loadDb, saveDb } from './mockDb.js'
 import * as C from './mockCore.js'
 // Mỗi module đăng ký các route của UC tương ứng
 import './mock/attendance.js'
@@ -253,6 +253,7 @@ export async function mockRequest(method, path, { query = {}, body } = {}) {
     const m = path.match(r.re)
     if (!m) continue
     const db = structuredClone(loadDb())
+    syncRegisteredInto(db) // tài khoản tự đăng ký đã kích hoạt luôn có mặt trong danh sách quản lý
     const out = r.handler({ db, actor: { ...user, role: normRole(user.role) }, params: m.groups || {}, query, body: body || {} })
     saveDb(db) // chỉ ghi khi handler không ném lỗi
     return structuredClone(out)
