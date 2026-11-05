@@ -7,17 +7,18 @@ Stage 2 mở rộng nền xác thực hiện có. Không xây lại login/regist
 ### Đã có
 
 - `backend/src/users/user.entity.ts`: `id` UUID, `email`, `passwordHash`, `fullName`, `role`, `status`, `phone`, `nationalId`, `createdAt`.
+- `UsersController`/`UsersService`: API liệt kê, tạo, cập nhật user, đổi role/status; kiểm tra quyền Admin/Manager và ghi audit log cùng transaction.
+- `AuditLog` entity/module/API: Admin có thể lọc nhật ký theo khoảng ngày và các trường hỗ trợ.
+- `ClassesController`/`ClassesService`: API lớp học và phân công giáo viên đã được thêm; migration `1793810000004-AddClasses.ts` cần được xem lại và chạy trên database.
+- `ChildrenController`/`ChildrenService`: API hồ sơ trẻ, lọc/phân trang, đổi lớp/trạng thái và liên kết phụ huynh đã được thêm; migration `1793810000005-AddChildren.ts` cần được xem lại và chạy trên database.
 - Migration user profile và `1793810000000-ChangeUserIdToUuid.ts` đã có. Việc migration đã chạy trên database nào cần kiểm tra bằng TypeORM; không suy ra từ việc file tồn tại.
 - Auth login/JWT guard/AdminGuard và seed admin đã có. JWT guard hiện yêu cầu `sub` là UUID.
-- `UsersModule` đăng ký repository và được import trong `AppModule`.
+- `UsersModule`, `ClassesModule` và `ChildrenModule` đăng ký repository và được import trong `AppModule`.
 
 ### Chưa có
 
-- `UsersController`/`UsersService`: chưa có API CRUD/quản lý role/status.
-- Audit log entity/module/API.
-- Class, class-teacher, child, child-parent entity/module.
-- Frontend trang quản trị user/lớp/trẻ.
-- Manager-scoped user lookup chưa có guard/service.
+- Frontend đang dùng mock cho các màn hình quản trị; chưa tích hợp đầy đủ các API Stage 2 với backend.
+- Kiểm thử API/phân quyền UC-03–05 qua database và hoàn thiện tích hợp frontend.
 
 ## Quy ước ID đã chốt
 
@@ -33,15 +34,15 @@ Trước khi chạy migration trên database có dữ liệu:
 
 ## Quy ước role/status hiện tại
 
-Backend đang dùng role chữ thường `admin`, `manager`, `teacher`, `medical`, `parent`; status `pending`, `active`, `disabled`. AuthService/guards phụ thuộc các chuỗi này. Giữ nguyên trong Stage 2 hoặc tạo migration đổi đồng bộ; không chỉ đổi enum trong entity/OpenAPI. `disabled` là trạng thái khóa hiện tại.
+Backend dùng role chữ hoa `ADMIN`, `MANAGER`, `TEACHER`, `MEDICAL_STAFF`, `PARENT`; status user `ACTIVE`, `LOCKED`, `INACTIVE`. Migration `1793810000002-UseUppercaseRoleAndStatus.ts` chuyển dữ liệu hiện có; xác nhận migration đã chạy trên đúng database trước khi dùng API.
 
 `fullName` vẫn nullable trong entity/DB; DTO tạo user nên bắt buộc. Chỉ chuyển cột thành NOT NULL sau khi backfill dữ liệu cũ.
 
 ## Phạm vi và thứ tự triển khai
 
-1. **UC-03:** user CRUD, role/status, audit log, Manager lookup giới hạn cho UC-04/05.
-2. **UC-05:** lớp và phân công giáo viên.
-3. **UC-04:** hồ sơ trẻ, xếp lớp, liên kết phụ huynh.
+1. **UC-03:** Backend API user, phân quyền, audit log và Manager lookup đã có; cần hoàn tất tích hợp frontend và xác minh contract/API trên database.
+2. **UC-05:** Backend API lớp và phân công giáo viên đã có; cần chạy migration, bổ sung kiểm tra đóng lớp dựa trên trẻ ACTIVE sau UC-04, rồi nối frontend.
+3. **UC-04:** backend API hồ sơ trẻ, xếp lớp và liên kết phụ huynh đã có; cần chạy migration và kiểm tra nghiệp vụ trên database.
 
 ## Bước 1 — UC-03 quản lý user
 

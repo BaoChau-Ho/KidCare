@@ -1,45 +1,29 @@
-# UC-13 ? G?i th?ng b?o cho ph? huynh
+# UC-13 — Gửi thông báo cho phụ huynh
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-13 |
-| T?c nh?n ch?nh | Gi?o vi?n |
-| Y?u c?u li?n quan | FR-NOTI-02 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-13 |
+| Tác nhân | Giáo viên |
+| Yêu cầu | FR-NOTI-02 |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Gi?o vi?n g?i th?ng b?o trong ?ng d?ng ??n ph? huynh c?a c? l?p ho?c nh?m tr?.
+Giáo viên gửi thông báo trong ứng dụng tới phụ huynh cả lớp hoặc một nhóm trẻ trong lớp mình phụ trách.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Gi?o vi?n ??ng nh?p, ???c ph?n c?ng l?p c? ng??i nh?n.
+1. Chọn lớp hoặc trẻ nhận.
+2. Nhập tiêu đề/nội dung.
+3. Backend xác minh phạm vi, tìm người nhận qua child-parent và tạo notification cho từng người.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. Ch?n l?p ho?c tr? trong l?p.
-2. Nh?p ti?u ??/n?i dung.
-3. Backend x?c minh quy?n v? x?c ??nh ph? huynh qua CHILD_PARENT.
-4. T?o m?t notification cho m?i ng??i nh?n v? tr? k?t qu? g?i.
+Thiếu nội dung hoặc không có người nhận trả lỗi/empty result rõ ràng. Không cho gửi tới lớp ngoài phân công.
 
-## Lu?ng thay th? v? l?i
+## API và quyền
 
-Thi?u ti?u ??/n?i dung b?o l?i; kh?ng c? ng??i nh?n th?ng b?o r?; kh?ng cho g?i ??n l?p ngo?i ph?n c?ng.
+`POST /notifications/broadcast`; chỉ TEACHER phụ trách lớp. Recipient được suy ra từ server-side relationship, không nhận danh sách tùy ý nếu không kiểm tra quyền.
 
-## API d? ki?n
+## Tiêu chí chấp nhận
 
-POST /notifications/broadcast
-
-## Quy t?c quy?n v? d? li?u
-
-JWT + TEACHER, l?p ph?i n?m trong assignment; n?i dung validate v? gi?i h?n k?ch th??c; ch? recipients ??ng ???c nh?n.
-
-## Ti?u ch? ch?p nh?n
-
-G?i c? l?p v? nh?m con; kh?ng tr?ng recipient; kh?ng c? ng??i nh?n c? ph?n h?i r?; audit ng??i g?i.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Người nhận đúng, không trùng; nội dung validate; thao tác lưu người gửi và thời điểm.

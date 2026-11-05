@@ -56,7 +56,7 @@ export class JwtAuthGuard implements CanActivate {
       where: { id: payload.sub },
     });
 
-    if (!user || user.status !== 'active') {
+    if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException({
         code: 'ACCOUNT_INACTIVE',
         message: 'Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.',

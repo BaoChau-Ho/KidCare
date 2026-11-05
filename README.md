@@ -1,5 +1,7 @@
 # KidCare
 
+Thành viên phát triển muốn chạy frontend với backend local hoặc import mock data vào PostgreSQL hãy xem [README.DEVELOPMENT.md](README.DEVELOPMENT.md).
+
 ## Yêu cầu
 
 - Git, Node.js 20, npm và Docker với Docker Compose.
@@ -86,6 +88,35 @@ npm run migration:run
 ```
 
 Migration `InitialSchema` là baseline không tạo bảng. Migration `Schema` tiếp theo tạo bảng `users` theo `User` entity. Luôn xem lại SQL migration được sinh trước khi chạy. Không bật `synchronize` trong ứng dụng.
+
+### Import mock data Stage 2 vào PostgreSQL local
+
+Để thử frontend với API backend, có thể import users, classes, children, teacher assignments và parent links từ mock database trình duyệt. Các dữ liệu mock cho attendance/health/activities/notifications chưa được import.
+
+1. Chạy frontend một lần để khởi tạo mock data. Mở DevTools → Console và chạy:
+
+   ```js
+   copy(localStorage.getItem('kidcare.mockdb.v4'))
+   ```
+
+2. Tạo `mock-data.json` ở thư mục gốc repository, dán nội dung vừa copy vào. File này đã được `.gitignore` bỏ qua.
+3. Đảm bảo PostgreSQL local đang chạy và xem các migration còn chờ:
+
+   ```powershell
+   cd backend
+   npx typeorm-ts-node-commonjs -d src/database/data-source.ts migration:show
+   ```
+
+   Nếu cần, review rồi chạy migrations để tạo các bảng Stage 2.
+4. Import từ thư mục `backend`:
+
+   ```powershell
+   npm run db:import-mock -- ../mock-data.json --confirm
+   ```
+
+Script chỉ nhập các bảng Stage 2, hash password mock bằng Argon2, và chạy trong một transaction. User trùng email và lớp trùng tên/năm học được cập nhật/ghép ID; các bản ghi khác được thêm theo ID mock. Đây là dữ liệu demo nên chỉ chạy trên database local/test. Tài khoản demo dùng mật khẩu `Password@123`.
+
+Để frontend gọi backend, đặt `VITE_USE_MOCK=false` trong `frontend/.env.local`, khởi động lại Vite, rồi đăng nhập bằng user đã import. Các màn hình có endpoint backend Stage 2 mới hoạt động ở chế độ này; các chức năng Stage 3 trở đi vẫn cần mock hoặc API tương ứng.
 
 Roadmap các stage 1–7 nằm tại [docs/roadmap/README.md](docs/roadmap/README.md). Đặc tả UC-01 đến UC-15 được lập chỉ mục tại [docs/01-requirements/use-cases/README.md](docs/01-requirements/use-cases/README.md).
 

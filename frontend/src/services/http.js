@@ -18,7 +18,6 @@ export async function api(method, path, { query, body } = {}) {
   try {
     res = await fetch(`${BASE}${path}${qs ? `?${qs}` : ''}`, {
       method,
-      credentials: 'include',
       headers: {
         ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

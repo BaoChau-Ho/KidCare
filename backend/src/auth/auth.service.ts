@@ -50,14 +50,14 @@ export class AuthService {
       });
     }
 
-    if (user.status === 'pending') {
+    if (user.status === 'INACTIVE') {
       throw new ForbiddenException({
         code: 'ACCOUNT_PENDING',
         message: 'Tài khoản đang chờ admin duyệt.',
       });
     }
 
-    if (user.status === 'disabled') {
+    if (user.status === 'LOCKED') {
       throw new ForbiddenException({
         code: 'ACCOUNT_DISABLED',
         message: 'Tài khoản đã bị vô hiệu hóa.',
@@ -87,7 +87,7 @@ export class AuthService {
       .getRepository(RegistrationRequest)
       .findOneBy({
         passwordSetupTokenHash: tokenHash,
-        status: 'approved',
+        status: 'APPROVED',
       });
 
     this.validateSetupRequest(request);
@@ -108,7 +108,7 @@ export class AuthService {
       const request = await requestRepository.findOne({
         where: {
           passwordSetupTokenHash: tokenHash,
-          status: 'approved',
+          status: 'APPROVED',
         },
         lock: { mode: 'pessimistic_write' },
       });
@@ -140,13 +140,13 @@ export class AuthService {
         passwordHash,
         fullName: request.fullName,
         role: request.role as UserRole,
-        status: 'active',
+        status: 'ACTIVE',
         phone: request.phone,
         nationalId: request.nationalId,
       });
       await userRepository.save(user);
 
-      request.status = 'completed';
+      request.status = 'COMPLETED';
       request.passwordSetupTokenHash = null;
       request.passwordSetupExpiresAt = null;
       await requestRepository.save(request);

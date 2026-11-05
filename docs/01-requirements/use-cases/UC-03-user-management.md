@@ -97,6 +97,7 @@ Có nhân sự mới, nhân sự nghỉ việc hoặc cần thay đổi quyền 
 - `PATCH /users/:id`
 - `PATCH /users/:id/role`
 - `PATCH /users/:id/status`
+- `GET /audit-logs?actorUserId=&action=&resourceType=&from=&to=&page=&limit=` (Admin)
 - API xóa/soft delete chỉ chốt sau khi nhóm quyết định chính sách ở trên.
 
 ## Tiêu chí chấp nhận

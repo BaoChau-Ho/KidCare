@@ -12,7 +12,7 @@ export class AdminGuard implements CanActivate {
     const request =
       context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    if (request.user.role !== 'admin') {
+    if (request.user.role !== 'ADMIN') {
       throw new ForbiddenException({
         code: 'ADMIN_ONLY',
         message: 'Chỉ admin mới có quyền thực hiện thao tác này.',

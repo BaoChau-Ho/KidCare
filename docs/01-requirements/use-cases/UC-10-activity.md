@@ -1,46 +1,30 @@
-# UC-10 ? T?o ho?t ??ng
+# UC-10 — Tạo hoạt động
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-10 |
-| T?c nh?n ch?nh | Gi?o vi?n |
-| Y?u c?u li?n quan | FR-ACT-01, FR-ACT-02, FR-ACT-05 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-10 |
+| Tác nhân | Giáo viên |
+| Yêu cầu | FR-ACT-01, FR-ACT-02, FR-ACT-05 |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Gi?o vi?n t?o ho?t ??ng cho l?p, ??nh d?u tr? tham gia v? c? th? ??nh k?m ?nh.
+Giáo viên tạo hoạt động của lớp, ghi nhận trẻ tham gia và tùy chọn đính kèm ảnh. Giáo viên phải được phân công lớp.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Gi?o vi?n ??ng nh?p, ???c ph?n c?ng l?p; l?p ho?t ??ng.
+1. Chọn lớp, nhập tiêu đề/mô tả/ngày.
+2. Chọn trẻ tham gia.
+3. Tải ảnh nếu cần; backend kiểm tra loại và dung lượng.
+4. Lưu hoạt động, participant và metadata ảnh; thông báo phụ huynh liên quan.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. Ch?n l?p, nh?p ti?u ??, m? t?, ng?y.
-2. Ch?n tr? tham gia.
-3. T?y ch?n t?i ?nh.
-4. Backend ki?m tra ph?m vi l?p, validate v? l?u ho?t ??ng/participants.
-5. T?o th?ng b?o cho ph? huynh c?c tr? tham gia.
+Lớp ngoài phạm vi bị từ chối; thiếu tiêu đề/ngày báo validation; ảnh sai loại/quá lớn bị từ chối.
 
-## Lu?ng thay th? v? l?i
+## API và quyền
 
-L?p ngo?i quy?n b? t? ch?i; thi?u ti?u ??/ng?y b?o l?i; ?nh sai ??nh d?ng/qu? dung l??ng b? t? ch?i.
+`GET/POST /activities`, `POST /activities/{activityId}/participants`, `POST /activities/{activityId}/images`, `GET /children/{childId}/activities`. Giáo viên chỉ ghi hoạt động cho lớp được phân công; phụ huynh chỉ xem hoạt động của con.
 
-## API d? ki?n
+## Tiêu chí chấp nhận
 
-GET/POST /activities; POST /activities/{activityId}/participants; POST /activities/{activityId}/images; GET /children/{childId}/activities
-
-## Quy t?c quy?n v? d? li?u
-
-JWT + TEACHER ???c gi?i h?n l?p ph?n c?ng; ph? huynh ch? xem ho?t ??ng c?a con. File ch? l?u metadata trong DB, n?i dung l?u object storage khi tri?n khai.
-
-## Ti?u ch? ch?p nh?n
-
-Ho?t ??ng v? participant ??ng; ph? huynh kh?ng xem tr? kh?c; file gi?i h?n lo?i/k?ch th??c; l?i l?u kh?ng t?o d? li?u d? dang.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Participant thuộc lớp; dữ liệu và file không lưu dở dang; phụ huynh không đọc hoạt động trẻ khác; kiểm tra giới hạn upload ở backend.

@@ -1,45 +1,34 @@
-# UC-01 ? ??ng nh?p
+# UC-01 — Đăng nhập
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-01 |
-| T?c nh?n ch?nh | T?t c? ng??i d?ng |
-| Y?u c?u li?n quan | FR-AUTH-02, FR-AUTH-03 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-01 |
+| Tác nhân | Tất cả người dùng |
+| Yêu cầu | FR-AUTH-02, FR-AUTH-03 |
+| Trạng thái tài liệu | Đặc tả; chưa tự khẳng định mức hoàn thành triển khai |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Ng??i d?ng x?c th?c b?ng email v? m?t kh?u, nh?n phi?n ??ng nh?p v? ???c ?i?u h??ng theo role.
+Người dùng xác thực bằng email/mật khẩu, nhận phiên đăng nhập và được điều hướng theo role. Tài khoản phải tồn tại và đang hoạt động.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-T?i kho?n t?n t?i, ?ang ACTIVE; ng??i d?ng ch?a ??ng nh?p.
+1. Người dùng nhập email và mật khẩu.
+2. Backend kiểm tra dữ liệu, chuẩn hóa email và so sánh mật khẩu với hash đã lưu.
+3. Nếu tài khoản hợp lệ, hệ thống tạo access token và trả thông tin người dùng đã loại bỏ thông tin xác thực.
+4. Frontend lưu phiên theo chính sách bảo mật và điều hướng đến trang phù hợp với role.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. Nh?p email v? m?t kh?u.
-2. Backend validate d? li?u, t?m t?i kho?n v? so s?nh m?t kh?u v?i hash.
-3. N?u h?p l?, t?o phi?n/token v? tr? th?ng tin user kh?ng g?m password hash.
-4. Frontend l?u phi?n theo ch?nh s?ch b?o m?t v? chuy?n t?i dashboard theo role.
+- Thiếu hoặc sai định dạng: trả lỗi validation.
+- Email/mật khẩu không đúng: trả thông báo chung, không tiết lộ email có tồn tại hay không.
+- Tài khoản `pending` hoặc `disabled`: từ chối đăng nhập.
+- Thử sai nhiều lần: áp dụng rate limit nếu được triển khai.
 
-## Lu?ng thay th? v? l?i
+## API và bảo mật
 
-Email/m?t kh?u sai tr? l?i chung; t?i kho?n LOCKED kh?ng ???c ??ng nh?p; request sai ??nh d?ng b? t? ch?i; gi?i h?n th? l?i khi c? nhi?u l?n sai.
+`POST /auth/login`, `GET /auth/me`; luồng đăng xuất hiện do client xóa phiên. Password hash không được trả về hoặc ghi log. Các endpoint nghiệp vụ xác thực JWT phía server.
 
-## API d? ki?n
+## Tiêu chí chấp nhận
 
-POST /auth/login; POST /auth/logout; GET /auth/me
-
-## Quy t?c quy?n v? d? li?u
-
-Public cho login; m?i route nghi?p v? c?n JWT. Ki?m tra tr?ng th?i t?i kho?n; kh?ng ghi ho?c tr? m?t kh?u/token nh?y c?m.
-
-## Ti?u ch? ch?p nh?n
-
-??ng nh?p h?p l?; th?ng tin sai; t?i kho?n b? kh?a; logout l?m phi?n h?t hi?u l?c; role ???c tr? ??ng.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Đăng nhập đúng trả user/role/token; sai thông tin và tài khoản không hoạt động bị chặn; token sai/hết hạn nhận 401; không lộ password hash.

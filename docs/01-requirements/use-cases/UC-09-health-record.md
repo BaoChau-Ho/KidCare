@@ -1,45 +1,30 @@
-# UC-09 ? Qu?n l? h? s? s?c kh?e
+# UC-09 — Quản lý hồ sơ sức khỏe
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-09 |
-| T?c nh?n ch?nh | Nh?n vi?n y t? |
-| Y?u c?u li?n quan | FR-HEALTH-01 ??n FR-HEALTH-07 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-09 |
+| Tác nhân | Nhân viên y tế |
+| Yêu cầu | FR-HEALTH-01 đến FR-HEALTH-07 |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Nh?n vi?n y t? qu?n l? ch? s?, d? ?ng, b?nh n?n, ti?m ch?ng, l?n kh?m v? thu?c c?a tr?.
+Nhân viên y tế ghi nhận chỉ số, dị ứng, bệnh nền, tiêm chủng, khám và thuốc của trẻ.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Nh?n vi?n y t? ??ng nh?p; tr? t?n t?i.
+1. Tìm trẻ và xem hồ sơ/lịch sử.
+2. Thêm/cập nhật chỉ số hoặc thông tin y tế phù hợp.
+3. Backend validate giá trị, lưu bản ghi và audit actor/thay đổi.
+4. Khi có dữ liệu mới hoặc cảnh báo, gửi thông báo cho các vai trò được phép.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. T?m tr? v? xem h? s?/l?ch s?.
-2. Th?m ho?c c?p nh?t ch? s?, d? ?ng, b?nh n?n, ti?m ch?ng, l?n kh?m/thu?c.
-3. Validate mi?n gi? tr? v? quy?n.
-4. L?u thay ??i, audit gi? tr? tr??c/sau v? g?i th?ng b?o c?n thi?t.
+Số đo ngoài miền hợp lý bị từ chối hoặc đánh dấu cần xác minh; người không có quyền không xem/sửa hồ sơ.
 
-## Lu?ng thay th? v? l?i
+## API
 
-Ch? s? kh?ng h?p l? b? t? ch?i; ng??ng b?t th??ng t?o c?nh b?o; ng??i kh?ng c? quy?n kh?ng xem/s?a h? s?.
+`/children/{childId}/health-records`, `/health-records/{recordId}`, `/children/{childId}/health-summary`, `/children/{childId}/vaccinations`, `/children/{childId}/medical-visits`, `/classes/{classId}/health-alerts`.
 
-## API d? ki?n
+## Bảo mật và tiêu chí chấp nhận
 
-GET/POST /children/{childId}/health-records; PATCH /health-records/{recordId}; GET /children/{childId}/health-summary; GET/POST /children/{childId}/vaccinations; GET/POST /children/{childId}/medical-visits; GET /classes/{classId}/health-alerts
-
-## Quy t?c quy?n v? d? li?u
-
-JWT + role MEDICAL_STAFF cho c?p nh?t; ph? huynh ch? ??c d? li?u cho tr? li?n k?t; gi?o vi?n ch? nh?n c?nh b?o t?i thi?u c?n thi?t. M?i thay ??i nh?y c?m c? audit.
-
-## Ti?u ch? ch?p nh?n
-
-Gi? tr? b?t h?p l? b? t? ch?i; l?ch s? gi? nguy?n; audit c? actor; quy?n ??c theo vai tr?; c?nh b?o ??n ??ng ng??i.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Chỉ MEDICAL_STAFF ghi; phụ huynh chỉ đọc trẻ được liên kết; giáo viên chỉ nhận thông tin cần cho an toàn. Audit không chứa password/token. Lịch sử và quyền truy cập được kiểm chứng.

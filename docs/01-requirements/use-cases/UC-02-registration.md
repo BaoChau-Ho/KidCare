@@ -1,45 +1,32 @@
-# UC-02 ? ??ng k? t?i kho?n
+# UC-02 — Đăng ký tài khoản
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-02 |
-| T?c nh?n ch?nh | Ph? huynh |
-| Y?u c?u li?n quan | FR-AUTH-01 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-02 |
+| Tác nhân | Phụ huynh (theo use case nguồn) |
+| Yêu cầu | FR-AUTH-01 |
+| Trạng thái tài liệu | Đặc tả; quy trình hiện thực cần được đối chiếu với OpenAPI và code |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Ph? huynh g?i y?u c?u t?o t?i kho?n v?i role PARENT m?c ??nh.
+Người dùng gửi yêu cầu mở tài khoản. Use case nguồn mô tả phụ huynh đăng ký; tài khoản có role `parent`. Email và số giấy tờ không được trùng.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Ch?a c? t?i kho?n d?ng email ??.
+1. Người dùng nhập họ tên, email, điện thoại, role được phép theo quy trình, CCCD và mật khẩu.
+2. Backend validate dữ liệu, chuẩn hóa email, hash mật khẩu và kiểm tra trùng.
+3. Tạo user/request ở trạng thái `pending`.
+4. Admin duyệt hoặc từ chối yêu cầu.
+5. Khi được duyệt, tài khoản chuyển sang `active`; nếu bị từ chối, lưu lý do.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. Nh?p h? t?n, email, s? ?i?n tho?i v? th?ng tin m?t kh?u theo quy tr?nh ???c nh?m ch?t.
-2. Backend validate v? chu?n h?a email.
-3. Ki?m tra email ch?a ???c s? d?ng.
-4. T?o y?u c?u/t?i kho?n PARENT v? tr? id c?ng tr?ng th?i.
+Dữ liệu sai trả lỗi tại trường; email/CCCD trùng trả conflict; người dùng không được tự đăng ký role `admin`.
 
-## Lu?ng thay th? v? l?i
+## API và điểm cần thống nhất
 
-D? li?u thi?u/sai ho?c m?t kh?u x?c nh?n kh?ng kh?p: tr? l?i tr??ng; email tr?ng: tr? conflict; client kh?ng th? t? ch?n role.
+Code hiện có `POST /auth/register`, `/admin/registration-requests`, các route approve/reject và thiết lập mật khẩu. OpenAPI hiện có một số đường dẫn/response chưa khớp code. Cần quyết định rõ: chỉ PARENT được tự đăng ký hay client được chọn trong các role được cho phép; admin duyệt thì dùng mật khẩu đã nhập hay gửi link thiết lập mật khẩu.
 
-## API d? ki?n
+## Tiêu chí chấp nhận
 
-POST /auth/register; n?u d?ng quy tr?nh duy?t: PATCH /auth/{id}/approve, POST /auth/set-password; GET /admin/registration-requests; PATCH /admin/registration-requests/{id}/reject
-
-## Quy t?c quy?n v? d? li?u
-
-Endpoint ??ng k? c?ng khai; role lu?n do server ?n ??nh. Hash m?t kh?u; token thi?t l?p m?t l?n, h?t h?n; admin routes c?n JWT + ADMIN.
-
-## Ti?u ch? ch?p nh?n
-
-Email tr?ng b? t? ch?i; role kh?ng th? n?ng l?n t? client; lu?ng ??ng k?/duy?t/thi?t l?p m?t kh?u ???c ki?m tra. Quy?t ??nh gi?a t?o PARENT ngay (UC ngu?n) v? ch? duy?t (OpenAPI hi?n t?i) ph?i ???c nh?m th?ng nh?t.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+Request hợp lệ lưu ở trạng thái pending; role admin không thể tự cấp; trùng email/CCCD bị từ chối; chỉ admin duyệt/từ chối; tài khoản pending không đăng nhập.

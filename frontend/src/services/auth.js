@@ -6,7 +6,9 @@
 // CHANGED (UC-03): sign in now also reads the accounts managed on /admin/users
 // (kho dùng chung trong mockDb.js). Accounts created, locked or re-roled there
 // take effect here immediately.
-import { loadDb as loadManaged, saveDb as saveManaged } from './mockDB.js'
+import { loadDb as loadManaged, saveDb as saveManaged } from './mockDb.js'
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
 export const ROLES = {
   parent: { label: 'Phụ huynh', home: '/parent' },
@@ -88,44 +90,109 @@ export const PASSWORD_RULES = [
  * Returns { user, token } on success.
  * Throws an error with `code`: INVALID_CREDENTIALS | PENDING | DISABLED | REJECTED
  */
-export async function login(email, password) {
-  // With a backend:
-  // const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
-  // const data = await res.json()
-  // if (!res.ok) throw fail(data.message, data.code)
-  // return data
+async function loginWithMock(email, password) {
   await delay(600)
-  const e = email.toLowerCase()
+  const normalizedEmail = email.trim().toLowerCase()
 
-  // Admin-managed account: a locked / inactive account can never sign in (UC-03 S3)
-  const managed = findManaged(e)
+  const managed = findManaged(normalizedEmail)
   if (managed && managed.status !== 'ACTIVE') {
-    throw fail(managed.status === 'LOCKED' ? 'Tài khoản của bạn đã bị quản trị viên khóa' : 'Tài khoản của bạn đã bị vô hiệu hóa', 'DISABLED')
+    throw fail(
+      managed.status === 'LOCKED'
+        ? 'Tài khoản của bạn đã bị quản trị viên khóa'
+        : 'Tài khoản của bạn đã bị vô hiệu hóa',
+      'DISABLED',
+    )
   }
-  const roleOf = (fallback) => (managed ? API_ROLE[managed.role] : fallback) // role set by the admin wins
 
-  const registered = [...readDb().users].reverse().find((u) => u.email === e)
+  const roleOf = (fallback) => (managed ? API_ROLE[managed.role] : fallback)
+  const registered = [...readDb().users]
+    .reverse()
+    .find((user) => user.email === normalizedEmail)
+
   if (registered) {
     if (registered.status === 'active') {
-      if (registered.password !== password) throw fail('Email hoặc mật khẩu không đúng', 'INVALID_CREDENTIALS')
-      return { user: { email: e, role: roleOf(registered.role) }, token: 'mock-token' }
+      if (registered.password !== password) {
+        throw fail('Email hoặc mật khẩu không đúng', 'INVALID_CREDENTIALS')
+      }
+      return {
+        user: { email: normalizedEmail, role: roleOf(registered.role) },
+        token: 'mock-token',
+      }
     }
-    if (registered.status === 'rejected') throw fail('Yêu cầu đăng ký của bạn đã bị từ chối', 'REJECTED')
-    throw fail('Tài khoản của bạn chưa được kích hoạt. Hãy chờ admin duyệt, sau đó dùng liên kết trong email để đặt mật khẩu.', 'PENDING')
+
+    if (registered.status === 'rejected') {
+      throw fail('Yêu cầu đăng ký của bạn đã bị từ chối', 'REJECTED')
+    }
+
+    throw fail('Tài khoản của bạn đang chờ admin duyệt', 'PENDING')
   }
 
-  const user = MOCK_USERS.find((u) => u.email === e)
+  const demoUser = MOCK_USERS.find((user) => user.email === normalizedEmail)
 
-  // Accounts created by the admin on /admin/users (sign in with the temporary password)
-  if (managed && !user) {
-    if (managedPassword(e) !== password) throw fail('Email hoặc mật khẩu không đúng', 'INVALID_CREDENTIALS')
-    return { user: { email: e, role: API_ROLE[managed.role] }, token: 'mock-token' }
+  if (managed && !demoUser) {
+    if (managedPassword(normalizedEmail) !== password) {
+      throw fail('Email hoặc mật khẩu không đúng', 'INVALID_CREDENTIALS')
+    }
+    return {
+      user: { email: normalizedEmail, role: API_ROLE[managed.role] },
+      token: 'mock-token',
+    }
   }
 
-  if (!user || password !== MOCK_PASSWORD) throw fail('Email hoặc mật khẩu không đúng', 'INVALID_CREDENTIALS')
-  if (user.status === 'pending') throw fail('Tài khoản của bạn đang chờ admin duyệt', 'PENDING')
-  if (user.status === 'disabled') throw fail('Tài khoản của bạn đã bị vô hiệu hóa', 'DISABLED')
-  return { user: { email: e, role: roleOf(user.role) }, token: 'mock-token' }
+  if (!demoUser || password !== MOCK_PASSWORD) {
+    throw fail('Email hoặc mật khẩu không đúng', 'INVALID_CREDENTIALS')
+  }
+  if (demoUser.status === 'pending') {
+    throw fail('Tài khoản của bạn đang chờ admin duyệt', 'PENDING')
+  }
+  if (demoUser.status === 'disabled') {
+    throw fail('Tài khoản của bạn đã bị vô hiệu hóa', 'DISABLED')
+  }
+
+  return {
+    user: { email: normalizedEmail, role: roleOf(demoUser.role) },
+    token: 'mock-token',
+  }
+}
+
+async function loginWithBackend(email, password) {
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  const response = await fetch(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const error = new Error(data?.message || 'Đăng nhập thất bại')
+    error.code = data?.code || 'LOGIN_FAILED'
+    throw error
+  }
+
+  const roleMap = {
+    ADMIN: 'admin',
+    MANAGER: 'manager',
+    TEACHER: 'teacher',
+    MEDICAL_STAFF: 'medical',
+    PARENT: 'parent',
+  }
+
+  return {
+    ...data,
+    accessToken: data.token,
+    user: {
+      ...data.user,
+      role: roleMap[data.user.role],
+    },
+  }
+}
+
+export function login(email, password) {
+  return USE_MOCK
+    ? loginWithMock(email, password)
+    : loginWithBackend(email, password)
 }
 
 // ---------- use case 1.2: register ----------

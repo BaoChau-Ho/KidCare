@@ -2,8 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  ParseUUIDPipe,
   Param,
-  ParseIntPipe,
   Patch,
   UseGuards,
 } from '@nestjs/common';
@@ -25,13 +25,13 @@ export class AdminRegistrationRequestsController {
   }
 
   @Patch(':id/approve')
-  approve(@Param('id', ParseIntPipe) id: number) {
+  approve(@Param('id', ParseUUIDPipe) id: string) {
     return this.registrationRequestsService.approve(id);
   }
 
   @Patch(':id/reject')
   reject(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RejectRegistrationRequestDto,
   ) {
     return this.registrationRequestsService.reject(id, dto.reason);

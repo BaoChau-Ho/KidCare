@@ -1,46 +1,30 @@
-# UC-06 ? ?i?m danh tr?
+# UC-06 — Điểm danh trẻ
 
-| Thu?c t?nh | N?i dung |
+| Thuộc tính | Nội dung |
 |---|---|
-| M? | UC-06 |
-| T?c nh?n ch?nh | Gi?o vi?n |
-| Y?u c?u li?n quan | FR-ATT-01 ??n FR-ATT-03, FR-ATT-06 |
-| Tr?ng th?i | ??c t? chuy?n t? use case ngu?n; ch?a ??ng ngh?a t?nh n?ng ?? ???c tri?n khai |
+| Mã | UC-06 |
+| Tác nhân | Giáo viên |
+| Yêu cầu | FR-ATT-01 đến FR-ATT-03, FR-ATT-06 |
 
-## M?c ti?u
+## Mục tiêu và điều kiện
 
-Gi?o vi?n xem danh s?ch tr? trong l?p ???c ph?n c?ng v? ghi nh?n check-in/check-out.
+Giáo viên ghi nhận trẻ đến lớp và được đón về. Giáo viên phải được phân công lớp; trẻ phải thuộc lớp đó và đang theo học.
 
-## Ti?n ?i?u ki?n
+## Luồng chính
 
-Gi?o vi?n ??ng nh?p; l?p ???c ph?n c?ng; tr? ACTIVE thu?c l?p.
+1. Giáo viên chọn lớp/ngày và xem roster cùng trạng thái hiện tại.
+2. Check-in ghi thời gian đến và người thao tác; trạng thái là PRESENT hoặc LATE theo giờ quy định.
+3. Check-out ghi thời gian về; có thể đánh dấu EARLY_LEAVE.
+4. Hệ thống lưu nguyên tử và cập nhật trạng thái cho phụ huynh.
 
-## Lu?ng ch?nh
+## Ngoại lệ
 
-1. Ch?n l?p v? ng?y.
-2. H? th?ng hi?n th? danh s?ch tr? c?ng tr?ng th?i trong ng?y.
-3. Gi?o vi?n check-in ho?c check-out.
-4. Backend ki?m tra quy?n l?p v? tr?ng th?i h?p l?, ghi gi?/ng??i thao t?c trong transaction.
-5. C?p nh?t danh s?ch v? t?o th?ng b?o cho ph? huynh.
+Trẻ có đơn nghỉ hiển thị ABSENT; check-out trước check-in bị từ chối; mỗi trẻ chỉ có một bản ghi/ngày; lỗi DB rollback.
 
-## Lu?ng thay th? v? l?i
+## API
 
-??n ngh? ?? duy?t hi?n th? ABSENT; tr? ch?a check-in kh?ng th? check-out; b?n ghi ng?y tr?ng b? t? ch?i; l?i DB rollback.
+`GET /classes/{classId}/attendance`, `POST /attendance/check-in`, `POST /attendance/check-out`, `PATCH /attendance/{attendanceId}`, và lịch sử theo trẻ.
 
-## API d? ki?n
+## Quyền và tiêu chí chấp nhận
 
-GET /classes/{classId}/attendance?date=; POST /attendance/check-in; POST /attendance/check-out; PATCH /attendance/{attendanceId}; GET /children/{childId}/attendance
-
-## Quy t?c quy?n v? d? li?u
-
-JWT; TEACHER ???c gi?i h?n theo l?p ph?n c?ng; MANAGER c? quy?n theo ch?nh s?ch. Unique (child_id,date); audit ng??i ghi nh?n.
-
-## Ti?u ch? ch?p nh?n
-
-Kh?ng ?i?m danh l?p ngo?i ph?m vi; check-in/out idempotency ho?c conflict r? r?ng; check-out tr??c check-in b? t? ch?i; l?ch s? ??ng.
-
-## T?i li?u li?n quan
-
-- ??c t? API: [OpenAPI](../../02-design/openapi.yaml)
-- M? h?nh d? li?u: [ERD](../../02-design/erd.md)
-- ??c t? ngu?n: `04_Dac_Ta_Use_Case.md` trong th? m?c t?i li?u d? ?n.
+JWT; giáo viên chỉ thao tác lớp được phân công. Không tạo bản ghi trùng ngày; giờ check-in/out hợp lệ; lớp ngoài quyền bị chặn; lịch sử giữ actor và timestamp.

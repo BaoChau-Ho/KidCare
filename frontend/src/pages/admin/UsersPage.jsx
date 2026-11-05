@@ -9,6 +9,7 @@ import PasswordRules from '../../components/PasswordRules.jsx'
 import useFetch from '../../hooks/useFetch.js'
 import useDebounce from '../../hooks/useDebounce.js'
 import { getSession, PASSWORD_RULES } from '../../services/auth.js'
+import { addDays, todayStr } from '../../services/dates.js'
 import { listUsers, createUser, updateUser, changeUserRole, changeUserStatus, listAuditLogs } from '../../services/users.js'
 import { ROLE_LABELS, USER_STATUS, ACTION_LABELS, fmtDateTime, diffText } from '../../services/labels.js'
 
@@ -212,7 +213,11 @@ function StatusDialog({ dialog, onClose, onSaved }) {
 function AuditPanel({ refreshKey }) {
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState(1)
-  const { data, loading, error } = useFetch(() => (open ? listAuditLogs({ page, limit: 8 }) : Promise.resolve(null)), [open, page, refreshKey])
+  const [range] = useState(() => ({ from: addDays(todayStr(), -29), to: todayStr() }))
+  const { data, loading, error } = useFetch(
+    () => (open ? listAuditLogs({ ...range, page, limit: 8 }) : Promise.resolve(null)),
+    [open, page, refreshKey, range.from, range.to],
+  )
   return (
     <section>
       <h2>Nhật ký thao tác <button className="link-btn" onClick={() => setOpen((v) => !v)}>{open ? 'Ẩn' : 'Xem'}</button></h2>
@@ -227,11 +232,15 @@ function AuditPanel({ refreshKey }) {
                 {data?.items.length === 0 && <tr><td colSpan="5" className="empty">Chưa có thao tác nào được ghi.</td></tr>}
                 {data?.items.map((l) => (
                   <tr key={l.id}>
-                    <td>{fmtDateTime(l.at)}</td>
-                    <td>{l.actorEmail}</td>
+                    <td>{fmtDateTime(l.createdAt ?? l.at)}</td>
+                    <td>{l.actorName ?? l.actorEmail ?? l.actorUserId ?? '—'}</td>
                     <td>{ACTION_LABELS[l.action] ?? l.action}</td>
-                    <td>{l.label}</td>
-                    <td className="muted">{diffText(l.before, l.after)}</td>
+                    <td>
+                      {l.resourceName
+                        ? `${l.resourceName} · ${l.resourceId?.slice(0, 8) ?? ''}`
+                        : l.label ?? `${l.resourceType ?? '—'} · ${l.resourceId?.slice(0, 8) ?? '—'}`}
+                    </td>
+                    <td className="muted">{diffText(l.oldValue ?? l.before, l.newValue ?? l.after)}</td>
                   </tr>
                 ))}
               </tbody>

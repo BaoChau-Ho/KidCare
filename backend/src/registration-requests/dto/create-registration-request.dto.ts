@@ -8,8 +8,14 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
+import type { RegistrationRequestRole } from '../registration-request.entity';
 
-const REGISTER_ROLES = ['parent', 'teacher', 'medical', 'manager'];
+const REGISTER_ROLES: RegistrationRequestRole[] = [
+  'PARENT',
+  'TEACHER',
+  'MEDICAL_STAFF',
+  'MANAGER',
+];
 
 export class CreateRegistrationRequestDto {
   @Transform(({ value }) =>
@@ -37,7 +43,7 @@ export class CreateRegistrationRequestDto {
     typeof value === 'string' ? value.trim() : value,
   )
   @IsIn(REGISTER_ROLES)
-  role!: string;
+  role!: RegistrationRequestRole;
 
   @Transform(({ value }) =>
     typeof value === 'string' ? value.trim() : value,
