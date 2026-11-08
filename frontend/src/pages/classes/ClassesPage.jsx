@@ -172,7 +172,7 @@ function TeachersModal({ cls, onClose, onSaved }) {
   // Giáo viên đang được phân công nhưng đã bị khóa: vẫn hiện để có thể gỡ
   const stale = (cls.teachers ?? []).filter((t) => !activeIds.has(t.userId))
 
-  const toggle = (id) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const toggle = (id) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const toAdd = [...picked].filter((id) => !current.has(id))
   const toRemove = [...current].filter((id) => !picked.has(id))
 

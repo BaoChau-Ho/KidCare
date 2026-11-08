@@ -23,7 +23,7 @@ export default function NotifyPage() {
   const { data: kids, loading: loadingKids } = useFetch(() => (cid ? listClassChildren(cid) : Promise.resolve(null)), [cid])
   const children = kids?.items ?? []
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
-  const toggle = (id) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const toggle = (id) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const a11y = (k) => ({ 'aria-invalid': !!errors[k], 'aria-describedby': errors[k] ? `${k}-err` : undefined })
 
   const submit = async (e) => {
