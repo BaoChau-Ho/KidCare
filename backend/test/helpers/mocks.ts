@@ -9,9 +9,13 @@ export type RepositoryMock = {
   find: jest.Mock;
   findOne: jest.Mock;
   findOneBy: jest.Mock;
+  findBy: jest.Mock;
+  countBy: jest.Mock;
+  exist: jest.Mock;
   create: jest.Mock;
   save: jest.Mock;
   remove: jest.Mock;
+  createQueryBuilder: jest.Mock;
 };
 
 /** Repository giả: mặc định không tìm thấy gì, `create` trả lại dữ liệu, `save` trả lại entity. */
@@ -20,10 +24,54 @@ export function createRepositoryMock(): RepositoryMock {
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue(null),
     findOneBy: jest.fn().mockResolvedValue(null),
+    findBy: jest.fn().mockResolvedValue([]),
+    countBy: jest.fn().mockResolvedValue(0),
+    exist: jest.fn().mockResolvedValue(false),
     create: jest.fn((data: object) => ({ ...data })),
     save: jest.fn(async (entity: object) => entity),
     remove: jest.fn(async (entity: object) => entity),
+    createQueryBuilder: jest.fn(() => createQueryBuilderMock()),
   };
+}
+
+export type QueryBuilderMock = Record<
+  | 'select'
+  | 'where'
+  | 'andWhere'
+  | 'innerJoin'
+  | 'orderBy'
+  | 'addOrderBy'
+  | 'skip'
+  | 'take'
+  | 'getManyAndCount',
+  jest.Mock
+>;
+
+/** QueryBuilder giả: các hàm nối chuỗi trả lại chính nó, `getManyAndCount` trả `[items, total]`. */
+export function createQueryBuilderMock(
+  items: unknown[] = [],
+  total = items.length,
+): QueryBuilderMock {
+  const qb = {} as QueryBuilderMock;
+  for (const method of [
+    'select',
+    'where',
+    'andWhere',
+    'innerJoin',
+    'orderBy',
+    'addOrderBy',
+    'skip',
+    'take',
+  ] as const) {
+    qb[method] = jest.fn(() => qb);
+  }
+  qb.getManyAndCount = jest.fn().mockResolvedValue([items, total]);
+  return qb;
+}
+
+/** Gom mọi tham số đã truyền vào `andWhere` / `innerJoin` thành một chuỗi để kiểm tra điều kiện lọc. */
+export function whereClauses(qb: QueryBuilderMock): string {
+  return JSON.stringify([...qb.andWhere.mock.calls, ...qb.innerJoin.mock.calls]);
 }
 
 /**

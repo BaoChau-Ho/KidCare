@@ -38,7 +38,15 @@ export async function createTestApp() {
 	// Giống main.ts: dùng ValidationPipe có transform để các DTO có giá trị mặc định (page, limit) hoạt động.
 	app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 	await app.init();
-	return { app, dataSource: app.get(DataSource), moduleRef };
+	const dataSource = app.get(DataSource);
+	// DatabaseModule tạo DataSource bằng useFactory nên app.close() không đóng kết nối, làm Jest không thoát.
+	// Gói lại close() để các file test chỉ cần gọi app.close() như bình thường.
+	const closeApp = app.close.bind(app);
+	app.close = async () => {
+		await closeApp();
+		if (dataSource.isInitialized) await dataSource.destroy();
+	};
+	return { app, dataSource, moduleRef };
 }
 
 export const api = (app: INestApplication) => ({
