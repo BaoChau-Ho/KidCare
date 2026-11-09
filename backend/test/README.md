@@ -10,6 +10,7 @@ Cập nhật lần cuối: **09/11/2026**, trên `main` tại commit `bdf5064` (
 | 1 | Đăng nhập, đăng ký, duyệt đăng ký (UC-01, UC-02) | 118 | 4 | 0 | 🟡 Còn `RolesGuard` chưa có code |
 | 2 | Tài khoản, lớp, hồ sơ trẻ (UC-03, UC-04, UC-05) | 88 | 0 | 0 | ✅ Unit xong |
 | 3 | Điểm danh, nghỉ học (UC-06, UC-07, UC-08) | 214 | 0 | 0 | ✅ Unit xong |
+| 4 | Hồ sơ sức khỏe (UC-09) | 0 | 0 | 0 | ⏸ Chưa có code; e2e viết trước, tự bỏ qua |
 | | **Tổng unit** | **423** | **4** | **0** | |
 
 | E2E (API thật + PostgreSQL thật) | File | Đạt | Trong đó lỗi đã biết |
@@ -22,6 +23,7 @@ Cập nhật lần cuối: **09/11/2026**, trên `main` tại commit `bdf5064` (
 | 3 · Điểm danh, đơn nghỉ | `attendance-leave.e2e-spec.ts` | 46 | 0 |
 | 3 · Ràng buộc database | `database-constraints.e2e-spec.ts` | 9 | 0 |
 | 3 · Response khớp `openapi.yaml` | `openapi-contract.e2e-spec.ts` | 3 | 0 |
+| 4 · Hồ sơ sức khỏe | `e2e/stage-4-health.e2e-spec.ts` | 0 (102 bỏ qua) | 0 |
 | **Tổng e2e** | | **200** | **6** |
 
 Unit test stage 3 gồm 196 test trong `test/unit/stage-3/` và 18 test nằm cạnh code (`src/attendance/attendance-policy.spec.ts`: 14, `src/common/school-time.spec.ts`: 4). E2E stage 3 nằm ở gốc `test/`, do người viết code stage 3 viết kèm PR #19.
@@ -40,7 +42,8 @@ backend/test/
 ├── e2e/
 │   ├── setup-env.ts        đặt JWT_SECRET mặc định trước khi nạp AppModule
 │   ├── helpers/app.ts      khung A: dựng app NestJS trên database tạm, tạo tài khoản + token JWT thật
-│   └── stage-<số>-*.e2e-spec.ts      e2e giai đoạn 0-2 (dùng khung A)
+│   ├── stage-<số>-*.e2e-spec.ts      e2e giai đoạn 0-2 (dùng khung A)
+│   └── stage-4-health.e2e-spec.ts    e2e giai đoạn 4, viết trước code (dùng khung B)
 ├── attendance-leave.e2e-spec.ts      e2e giai đoạn 3 (dùng khung B)
 ├── database-constraints.e2e-spec.ts
 ├── openapi-contract.e2e-spec.ts
@@ -178,6 +181,34 @@ Kiểm tra:
 - **Audit và sự kiện:** audit ghi trong cùng transaction với đúng người làm, hành động, giá trị trước/sau, IP; lý do nghỉ không bị ghi vào audit; sự kiện chỉ phát sau khi lưu thành công; lỗi giữa chừng được ném ra để rollback.
 - **Hiệu năng:** gắn tên trẻ, lớp, phụ huynh theo lô, 3 đơn chỉ tốn 1 truy vấn mỗi bảng.
 
+### Giai đoạn 4 — `e2e/stage-4-health.e2e-spec.ts`
+
+Backend chưa có code hồ sơ sức khỏe. Test được viết trước theo hợp đồng UC-09 trong `docs/02-design/openapi.yaml`, chỉ gọi API qua HTTP nên không phụ thuộc tên entity hay bảng backend sẽ đặt.
+
+File tự bỏ qua (`describe.skip`) khi `src/` chưa có file `*.controller.ts` nào chứa `health-records` hoặc `health-summary`. Khi controller đầu tiên xuất hiện, test tự chạy và CI sẽ đỏ cho đến khi làm đủ hợp đồng. Muốn chạy trước để xem test đỏ: đặt `STAGE4_E2E=1`. Ngày 09/11/2026 chạy thử: 96 test đỏ vì 404, 6 test kiểm tra 404 (E2E-H4-34) đạt.
+
+| Nhóm | Mã test | Số test |
+|---|---|---|
+| Ghi, xem, sửa số đo | E2E-H4-01 → 15 | 40 |
+| Dị ứng, bệnh nền, quyền | E2E-H4-16 → 24 | 16 |
+| Tiêm chủng | E2E-H4-25 → 29 | 9 |
+| Lần khám | E2E-H4-30 → 33 | 11 |
+| 404 khi trẻ không tồn tại | E2E-H4-34 | 6 |
+| Tóm tắt theo vai trò | E2E-H4-35 → 42 | 11 |
+| Cảnh báo của lớp | E2E-H4-43 → 46 | 7 |
+| Audit, khớp `openapi.yaml` | E2E-H4-47, 48 | 2 |
+
+Quy ước đã chốt trong OpenAPI (09/11/2026, lấy theo khoảng frontend đang dùng):
+
+- **Đơn vị và khoảng hợp lệ (gồm hai đầu):** chiều cao 30-150 cm, cân nặng 2-50 kg, nhiệt độ 34-42 °C. Cần ít nhất một chỉ số.
+- **Cảnh báo:** `abnormal` có `TEMPERATURE` khi nhiệt độ ≥ 37,5 °C (sốt) hoặc ≤ 35 °C (thân nhiệt thấp). Test kiểm tra 37,4 / 37,5 / 35 / 35,1.
+- **Quyền:** chỉ MEDICAL_STAFF đọc và ghi chi tiết. PARENT (con mình) và TEACHER (lớp mình) chỉ đọc `health-summary`; MANAGER, ADMIN nhận 403. Cảnh báo lớp: TEACHER lớp mình, MANAGER và MEDICAL_STAFF mọi lớp.
+- **Lọc theo vai trò:** phụ huynh không thấy ghi chú và kết luận khám; giáo viên chỉ thấy dị ứng và bệnh nền đang theo dõi. Test dùng chuỗi đánh dấu để chắc thông tin nhạy cảm không lọt ra, kể cả vào audit log.
+- **Trùng:** dị ứng hoặc bệnh nền đang theo dõi cùng tên, mũi tiêm cùng tên vắc-xin và số mũi trả 409 (không phân biệt hoa thường).
+- **Thời gian:** ngày tiêm và thời điểm khám không được ở tương lai; ngày hẹn mũi sau phải sau ngày tiêm; mũi "sắp tới" là mũi hẹn trong 30 ngày tới hoặc đã quá hẹn.
+
+Khi backend làm stage 4, `resetDatabase` trong `helpers/test-app.ts` vẫn xóa được bảng sức khỏe nhờ `TRUNCATE ... CASCADE` (bảng có khóa ngoại tới `children`).
+
 ### E2E — `e2e/`
 
 Kiểm tra:
@@ -237,3 +268,4 @@ Mỗi khi thêm hoặc chuyển test từ `todo` sang chạy thật:
 | 06/11/2026 | Thêm hạ tầng e2e (database tạm cho mỗi file) và 142 e2e test giai đoạn 0–2: health, migration, đăng nhập, token, đăng ký, ma trận phân quyền, IDOR, ghi đồng thời, transaction; ghi nhận vấn đề #14–#17 |
 | 09/11/2026 | Đưa test giai đoạn 0-2 (nhánh `feature/backend-tests-stage-0-2`) lên `main` sau PR #19, #20. Ghi nhận test giai đoạn 3 có sẵn (18 unit, 58 e2e) và hai khung e2e. `createTestApp` tự đóng DataSource để Jest thoát. Hướng dẫn chạy e2e trên database `kidcare_test` riêng. Đánh dấu #2 đã sửa; ghi nhận #18-#21. Kết quả: unit 227 đạt, 4 todo; e2e 200/200 đạt |
 | 09/11/2026 | Thêm 196 unit test giai đoạn 3 (`ChildAccessService`, DTO, `AttendanceService`, `LeaveRequestsService`, `db-errors`); thêm `getMany`, `getOne`, `getExists` vào QueryBuilder giả; ghi nhận vấn đề #22-#24. Kết quả: unit 423 đạt, 4 todo |
+| 09/11/2026 | Chốt hợp đồng UC-09 trong `openapi.yaml` (thêm 6 API dị ứng, bệnh nền; đơn vị, khoảng hợp lệ, ngưỡng sốt, lọc theo vai trò). Thêm 102 e2e giai đoạn 4 viết trước code, tự bỏ qua khi chưa có controller. Kết quả: e2e 200 đạt, 102 bỏ qua |
