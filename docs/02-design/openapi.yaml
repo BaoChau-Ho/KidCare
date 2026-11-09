@@ -700,16 +700,16 @@ paths:
         - { $ref: '#/components/parameters/ClassId' }
         - name: date
           in: query
-          required: true
+          required: false
+          description: Mặc định là hôm nay theo giờ của trường.
           schema: { type: string, format: date }
       responses:
         '200':
-          description: Bảng điểm danh trong ngày
+          description: Bảng điểm danh trong ngày, gồm cả trẻ chưa điểm danh
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: '#/components/schemas/Attendance' }
+              schema: { $ref: '#/components/schemas/ClassAttendanceRoster' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -727,6 +727,18 @@ paths:
               type: object
               properties:
                 childId: { type: string, format: uuid }
+                date:
+                  type: string
+                  format: date
+                  description: Mặc định là hôm nay. Không được ở tương lai.
+                checkInTime:
+                  type: string
+                  format: date-time
+                  description: Mặc định là thời điểm hiện tại khi date là hôm nay. Bắt buộc với ngày đã qua.
+                status:
+                  type: string
+                  enum: [ABSENT]
+                  description: Chỉ dùng để ghi vắng, khi đó không gửi checkInTime.
               required: [childId]
       responses:
         '201':
@@ -734,6 +746,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Attendance' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -752,6 +765,14 @@ paths:
               type: object
               properties:
                 childId: { type: string, format: uuid }
+                date:
+                  type: string
+                  format: date
+                  description: Mặc định là hôm nay. Không được ở tương lai.
+                checkOutTime:
+                  type: string
+                  format: date-time
+                  description: Mặc định là thời điểm hiện tại khi date là hôm nay. Bắt buộc với ngày đã qua.
               required: [childId]
       responses:
         '200':
@@ -759,6 +780,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Attendance' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -799,13 +821,10 @@ paths:
         - { $ref: '#/components/parameters/ChildId' }
       responses:
         '200':
-          description: Trạng thái điểm danh hôm nay
+          description: Trạng thái điểm danh hôm nay. Chưa có bản ghi thì status là NOT_CHECKED_IN, hoặc ABSENT nếu có đơn nghỉ đã duyệt.
           content:
             application/json:
-              schema:
-                oneOf:
-                  - { $ref: '#/components/schemas/Attendance' }
-                  - type: 'null'
+              schema: { $ref: '#/components/schemas/ChildAttendanceToday' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -894,6 +913,27 @@ paths:
       responses:
         '200':
           description: Yêu cầu đã duyệt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeaveRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /leave-requests/{requestId}/cancel:
+    patch:
+      tags: [Leave Requests]
+      operationId: cancelLeaveRequest
+      summary: Phụ huynh rút yêu cầu nghỉ đang chờ duyệt
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Yêu cầu đã rút (status CANCELLED)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/LeaveRequest' }
@@ -1957,7 +1997,58 @@ components:
         checkOutTime: { type: [string, 'null'], format: date-time }
         status: { $ref: '#/components/schemas/AttendanceStatus' }
         recordedByUserId: { type: string, format: uuid }
+        earlyLeave: { type: boolean, description: Về trước giờ tan học }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
       required: [id, childId, date, status, recordedByUserId]
+
+    AttendanceViewStatus:
+      type: string
+      description: AttendanceStatus cộng thêm NOT_CHECKED_IN cho trẻ chưa có bản ghi trong ngày.
+      enum: [PRESENT, ABSENT, LATE, EARLY_LEAVE, NOT_CHECKED_IN]
+
+    ClassAttendanceRosterItem:
+      type: object
+      properties:
+        childId: { type: string, format: uuid }
+        name: { type: string }
+        gender: { type: string, enum: [MALE, FEMALE, OTHER] }
+        attendanceId: { type: [string, 'null'], format: uuid }
+        status: { $ref: '#/components/schemas/AttendanceViewStatus' }
+        checkInTime: { type: [string, 'null'], format: date-time }
+        checkOutTime: { type: [string, 'null'], format: date-time }
+        earlyLeave: { type: boolean }
+        onLeave: { type: boolean, description: Có đơn nghỉ đã duyệt phủ ngày này }
+      required: [childId, name, attendanceId, status, checkInTime, checkOutTime, earlyLeave, onLeave]
+
+    ClassAttendanceRoster:
+      type: object
+      properties:
+        classId: { type: string, format: uuid }
+        className: { type: string }
+        date: { type: string, format: date }
+        settings:
+          type: object
+          properties:
+            startTime: { type: string, pattern: '^\d{2}:\d{2}$' }
+            endTime: { type: string, pattern: '^\d{2}:\d{2}$' }
+          required: [startTime, endTime]
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ClassAttendanceRosterItem' }
+      required: [classId, className, date, settings, items]
+
+    ChildAttendanceToday:
+      type: object
+      properties:
+        childId: { type: string, format: uuid }
+        date: { type: string, format: date }
+        status: { $ref: '#/components/schemas/AttendanceViewStatus' }
+        checkInTime: { type: [string, 'null'], format: date-time }
+        checkOutTime: { type: [string, 'null'], format: date-time }
+        earlyLeave: { type: boolean }
+        onLeave: { type: boolean }
+      required: [childId, date, status, checkInTime, checkOutTime, earlyLeave, onLeave]
 
     UpdateAttendanceRequest:
       type: object
