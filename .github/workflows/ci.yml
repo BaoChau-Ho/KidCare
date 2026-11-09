@@ -30,6 +30,7 @@ jobs:
       DB_USERNAME: user
       DB_PASSWORD: password
       DB_DATABASE: mydb
+      JWT_SECRET=cb167aa20913a2508e79de1efd94c92ff87c12dacf85b8a34a733529f31ab0c362aaef76b964c3cdd068d7e97529f214
     defaults:
       run:
         working-directory: backend

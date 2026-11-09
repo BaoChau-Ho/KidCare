@@ -18,7 +18,11 @@ export default function AdminRequests() {
     setRequests(await listRequests())
     setOutbox(await listOutbox())
   }, [])
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => {
+    let alive = true
+    listOutbox().then((data) => { if (alive) setOutbox(data) })
+    return () => { alive = false }
+  }, [])
 
   if (!session || session.user.role !== 'admin') return <Navigate to="/login" replace />
 
