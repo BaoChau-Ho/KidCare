@@ -30,7 +30,8 @@ jobs:
       DB_USERNAME: user
       DB_PASSWORD: password
       DB_DATABASE: mydb
-      JWT_SECRET=cb167aa20913a2508e79de1efd94c92ff87c12dacf85b8a34a733529f31ab0c362aaef76b964c3cdd068d7e97529f214
+      # Chỉ dùng trong CI, không dùng cho môi trường thật.
+      JWT_SECRET: ci-only-jwt-secret-not-for-production
     defaults:
       run:
         working-directory: backend
@@ -44,6 +45,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test -- --runInBand
+      # E2E cần schema thật: chạy migration trên database trắng của service postgres.
+      - run: npm run migration:run
       - run: npm run test:e2e -- --runInBand
       - run: npm run build
 
