@@ -1,6 +1,6 @@
 // Mock "backend" cho UC-03/04/05: mô phỏng đúng đường dẫn, mã lỗi và dạng dữ liệu trong openapi.yaml.
 // Dữ liệu lưu trong localStorage. Mỗi request chạy trên bản sao; lỗi thì bỏ bản sao (giống rollback transaction).
-import { getSession } from './auth.js'
+import { getSession, syncRegisteredInto } from './auth.js'
 import { ApiError } from './apiError.js'
 import { normRole } from './labels.js'
 import { loadDb, saveDb } from './mockDb.js'
@@ -116,15 +116,6 @@ route('GET', '/classes/:id', ({ db, actor, params }) => {
   return outClass(db, c)
 })
 
-// Danh sách trẻ đang học của lớp (giáo viên chỉ xem lớp mình phụ trách)
-route('GET', '/classes/:id/children', ({ db, actor, params }) => {
-  need(actor, 'MANAGER', 'TEACHER')
-  const c = found(db.classes.find((x) => x.id === params.id), 'lớp')
-  classAccess(db, actor, c.id)
-  const items = db.children.filter((ch) => ch.classId === c.id && ch.status === 'ACTIVE').sort((a, b) => a.name.localeCompare(b.name, 'vi'))
-  return { items: items.map((ch) => outChild(db, ch)) }
-})
-
 route('PATCH', '/classes/:id', ({ db, actor, params, body }) => {
   need(actor, 'MANAGER')
   const c = found(db.classes.find((x) => x.id === params.id), 'lớp')
@@ -179,8 +170,10 @@ route('DELETE', '/classes/:id/teachers/:tid', ({ db, actor, params }) => {
 
 /* UC-04 — hồ sơ trẻ */
 route('GET', '/children', ({ db, actor, query }) => {
-  need(actor, 'MANAGER', 'MEDICAL_STAFF', 'PARENT')
-  const mine = actor.role === 'PARENT' ? parentChildIds(db, actor) : null
+  need(actor, 'MANAGER', 'MEDICAL_STAFF', 'PARENT', 'TEACHER')
+  // PARENT: con đã liên kết; TEACHER: trẻ của lớp được phân công (giống backend Stage 2)
+  const myClasses = actor.role === 'TEACHER' ? teacherClassIds(db, actor) : null
+  const mine = actor.role === 'PARENT' ? parentChildIds(db, actor) : actor.role === 'TEACHER' ? db.children.filter((c) => myClasses.includes(c.classId)).map((c) => c.id) : null
   const q = fold(query.query || '')
   const rows = db.children
     .filter((c) => (!mine || mine.includes(c.id)) && (!q || fold(c.name).includes(q)) && (!query.classId || c.classId === query.classId) && (!query.status || c.status === query.status))
@@ -253,6 +246,7 @@ export async function mockRequest(method, path, { query = {}, body } = {}) {
     const m = path.match(r.re)
     if (!m) continue
     const db = structuredClone(loadDb())
+    syncRegisteredInto(db) // tài khoản tự đăng ký đã kích hoạt luôn có mặt trong danh sách quản lý
     const out = r.handler({ db, actor: { ...user, role: normRole(user.role) }, params: m.groups || {}, query, body: body || {} })
     saveDb(db) // chỉ ghi khi handler không ném lỗi
     return structuredClone(out)

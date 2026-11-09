@@ -47,7 +47,10 @@ export const outClass = (db, c) => {
   return {
     ...c,
     teacherUserIds: links.map((l) => l.teacherUserId),
-    teachers: links.map((l) => ({ userId: l.teacherUserId, fullName: db.users.find((u) => u.id === l.teacherUserId)?.fullName ?? '\u2014' })),
+    teachers: links.map((l) => {
+      const u = db.users.find((x) => x.id === l.teacherUserId)
+      return { id: l.teacherUserId, fullName: u?.fullName ?? '', email: u?.email ?? '' } // dạng của backend Stage 2
+    }),
     childCount: activeChildCount(db, c.id),
   }
 }
@@ -60,7 +63,7 @@ export const outChild = (db, ch, withParents = false) => {
     ...(withParents && {
       parents: links.map((l) => {
         const u = db.users.find((x) => x.id === l.parentUserId)
-        return { userId: l.parentUserId, fullName: u?.fullName, email: u?.email, phone: u?.phone, relationship: l.relationship }
+        return { parentUserId: l.parentUserId, fullName: u?.fullName ?? u?.email ?? '', relationship: l.relationship } // dạng của backend Stage 2
       }),
     }),
   }
@@ -93,14 +96,14 @@ export function classAccess(db, actor, classId) {
   if (actor.role === 'TEACHER' && isTeacherOf(db, actor, classId)) return
   throw new ApiError(403, 'FORBIDDEN', 'Bạn không phụ trách lớp này.')
 }
-// Chống IDOR: không có quyền thì trả 404, không tiết lộ hồ sơ có tồn tại hay không
+// Chống IDOR: dữ liệu không thuộc về người hỏi thì trả 403 CHILD_ACCESS_DENIED (giống backend Stage 2)
 export function childAccess(db, actor, child, roles = ['MANAGER', 'PARENT', 'TEACHER']) {
   const r = actor.role
   const ok = roles.includes(r) && (
     r === 'MANAGER' || r === 'MEDICAL_STAFF' ||
     (r === 'PARENT' && parentChildIds(db, actor).includes(child.id)) ||
     (r === 'TEACHER' && isTeacherOf(db, actor, child.classId)))
-  if (!ok) throw new ApiError(404, 'NOT_FOUND', 'Không tìm thấy hồ sơ trẻ.')
+  if (!ok) throw new ApiError(403, 'CHILD_ACCESS_DENIED', 'Bạn không được truy cập hồ sơ trẻ này.')
 }
 
 /* ---------- thông báo (UC-13/14) ---------- */

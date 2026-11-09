@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
 // Kiểm thử quy tắc nghiệp vụ và phân quyền của mock server (Stage 7).
 // Chạy: npx vitest run   (cần: npm i -D vitest jsdom)
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockRequest } from './mockServer.js'
 import { resetMockDb } from './mockDb.js'
 import { saveSession } from './auth.js'
@@ -41,21 +40,14 @@ describe('UC-06 điểm danh', () => {
     expect((await call('GET', `/classes/${c1.id}/attendance`, { query: {} })).status).toBe(403)
   })
   it('check-in trùng ngày bị 409, check-out trước check-in bị 409, check-out hai lần bị 409', async () => {
-    // Dữ liệu mẫu tự check-in bé An lúc 07:55 hôm nay; cố định giờ 07:00 để bé chưa có bản ghi.
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(`${TODAY}T07:00`))
-    try {
-      resetMockDb()
-      an = find((await call('GET', '/children', { query: { limit: 50 } })).data.items, 'Minh An')
-      teacher()
-      expect((await call('POST', '/attendance/check-out', { body: { childId: an.id, date: TODAY, checkOutTime: `${TODAY}T23:00` } })).code).toBe('NOT_CHECKED_IN')
-      expect((await call('POST', '/attendance/check-in', { body: { childId: an.id, checkInTime: `${TODAY}T00:01` } })).ok).toBe(true)
-      expect((await call('POST', '/attendance/check-in', { body: { childId: an.id } })).code).toBe('ATTENDANCE_EXISTS')
-      expect((await call('POST', '/attendance/check-out', { body: { childId: an.id, checkOutTime: `${TODAY}T00:02` } })).ok).toBe(true)
-      expect((await call('POST', '/attendance/check-out', { body: { childId: an.id } })).code).toBe('ALREADY_CHECKED_OUT')
-    } finally {
-      vi.useRealTimers()
-    }
+    teacher()
+    // Dùng một ngày cố định trong quá khứ để không phụ thuộc dữ liệu mẫu của hôm nay hay giờ chạy test
+    const P = '2026-01-05'
+    expect((await call('POST', '/attendance/check-out', { body: { childId: an.id, date: P, checkOutTime: `${P}T16:00` } })).code).toBe('NOT_CHECKED_IN')
+    expect((await call('POST', '/attendance/check-in', { body: { childId: an.id, date: P, checkInTime: `${P}T07:50` } })).ok).toBe(true)
+    expect((await call('POST', '/attendance/check-in', { body: { childId: an.id, date: P, checkInTime: `${P}T07:55` } })).code).toBe('ATTENDANCE_EXISTS')
+    expect((await call('POST', '/attendance/check-out', { body: { childId: an.id, date: P, checkOutTime: `${P}T16:00` } })).ok).toBe(true)
+    expect((await call('POST', '/attendance/check-out', { body: { childId: an.id, date: P, checkOutTime: `${P}T16:10` } })).code).toBe('ALREADY_CHECKED_OUT')
   })
   it('giáo viên lớp khác, ngày tương lai, vai trò khác đều bị chặn', async () => {
     teacher()
@@ -93,10 +85,10 @@ describe('UC-07 phụ huynh và chống IDOR', () => {
     ['lịch sử điểm danh', (id) => `/children/${id}/attendance`],
     ['sức khỏe', (id) => `/children/${id}/health-summary`],
     ['hoạt động', (id) => `/children/${id}/activities`],
-  ])('đổi id sang con người khác -> 404 (%s)', async (_n, path) => {
+  ])('đổi id sang con người khác -> 403 (%s)', async (_n, path) => {
     parent()
     const r = await call('GET', path(huy.id), { query: {} })
-    expect(r.ok).toBe(false); expect(r.status).toBe(404)
+    expect(r.ok).toBe(false); expect(r.status).toBe(403)
   })
   it('lịch sử điểm danh có phân trang và validate khoảng ngày', async () => {
     parent()
@@ -114,7 +106,7 @@ describe('UC-08 đơn xin nghỉ', () => {
     expect((await mk({ fromDate: '2099-02-02', toDate: '2099-02-01' })).status).toBe(400)
     expect((await mk({ fromDate: '2099-02-01', toDate: '2099-02-03' })).ok).toBe(true)
     expect((await mk({ fromDate: '2099-02-02', toDate: '2099-02-05' })).code).toBe('LEAVE_OVERLAP')
-    expect((await call('POST', '/leave-requests', { body: { childId: huy.id, fromDate: '2099-03-01', toDate: '2099-03-01', reason: 'x' } })).status).toBe(404)
+    expect((await call('POST', '/leave-requests', { body: { childId: huy.id, fromDate: '2099-03-01', toDate: '2099-03-01', reason: 'x' } })).status).toBe(403)
   })
   it('giáo viên duyệt: hiện vắng có phép trên roster, thông báo cho phụ huynh, không xử lý hai lần', async () => {
     teacher()
@@ -145,7 +137,7 @@ describe('UC-09 sức khỏe: lọc theo vai trò và validate', () => {
   })
   it('giáo viên lớp khác và quản lý không xem được sức khỏe cá nhân', async () => {
     teacher()
-    expect((await call('GET', `/children/${linh.id}/health-summary`, {})).status).toBe(404)
+    expect((await call('GET', `/children/${linh.id}/health-summary`, {})).status).toBe(403)
     as('manager@demo.com', 'manager')
     expect((await call('GET', `/children/${an.id}/health-summary`, {})).status).toBe(403)
   })
@@ -200,7 +192,7 @@ describe('UC-11/12 đón trẻ', () => {
   const req = { pickupPerson: 'Trần Văn B', relationship: 'Chú/Bác/Cậu', idNumber: '987654321', expectedTime: '2099-01-01T10:00' }
   it('phụ huynh đăng ký: validate, ẩn giấy tờ, chỉ đăng ký cho con mình, hủy khi PENDING', async () => {
     parent()
-    expect((await call('POST', '/pickup-requests', { body: { childId: huy.id, ...req } })).status).toBe(404)
+    expect((await call('POST', '/pickup-requests', { body: { childId: huy.id, ...req } })).status).toBe(403)
     expect((await call('POST', '/pickup-requests', { body: { childId: an.id, ...req, expectedTime: '2020-01-01T10:00' } })).status).toBe(400)
     expect((await call('POST', '/pickup-requests', { body: { childId: an.id, ...req, idNumber: '12' } })).status).toBe(400)
     const r = await call('POST', '/pickup-requests', { body: { childId: an.id, ...req } })
@@ -273,5 +265,102 @@ describe('múi giờ', () => {
     expect(hhmm(r.data.checkInTime)).toBe('08:05')
     expect(hhmm('2026-01-05T01:05:00.000Z')).toMatch(/^\d{2}:\d{2}$/) // chuỗi UTC được đổi sang giờ máy
     expect(hhmm(new Date(2026, 0, 5, 8, 5).toISOString())).toBe('08:05')
+  })
+})
+
+describe('nhật ký thao tác hiển thị tiếng Việt', () => {
+  it('đổi giá trị thô sang nhãn tiếng Việt theo loại đối tượng', async () => {
+    const { diffText } = await import('./labels.js')
+    expect(diffText({ status: 'LOCKED' }, { status: 'ACTIVE' }, 'user')).toBe('Trạng thái: Đã khóa \u2192 Hoạt động')
+    expect(diffText({ status: 'ACTIVE' }, { status: 'WITHDRAWN' }, 'child')).toBe('Trạng thái: Đang học \u2192 Đã nghỉ học')
+    expect(diffText({ role: 'TEACHER' }, { role: 'MANAGER' }, 'user')).toBe('Vai trò: Giáo viên \u2192 Quản lý cơ sở')
+    expect(diffText(null, { parent: 'Nguyễn Văn Phụ', relationship: 'FATHER' }, 'child')).toBe('Phụ huynh: Nguyễn Văn Phụ; Quan hệ: Bố')
+    expect(diffText({ active: true }, { active: false }, 'child')).toBe('Theo dõi: Đang theo dõi \u2192 Ngừng theo dõi')
+    expect(diffText({ status: 'PENDING' }, { status: 'APPROVED' }, 'leave')).toBe('Trạng thái: Chờ duyệt \u2192 Đã duyệt')
+  })
+})
+
+describe('đồng bộ tài khoản tự đăng ký', () => {
+  it('tài khoản đã kích hoạt qua /register hiện trong /admin/users, không bị thêm trùng', async () => {
+    localStorage.setItem('mock_db', JSON.stringify({ outbox: [], users: [
+      { id: 'r1', fullName: 'Blnkhole', email: 'haianh@gmail.com', phone: '+84904304273', role: 'parent', nationalId: '123456789012', status: 'active', password: 'Password@123' },
+      { id: 'r2', fullName: 'Chờ duyệt', email: 'pending@gmail.com', role: 'parent', status: 'pending' },
+    ] }))
+    as('admin@demo.com', 'admin')
+    const r1 = await call('GET', '/users', { query: { query: 'Blnkhole' } })
+    expect(r1.data.items).toHaveLength(1)
+    expect(r1.data.items[0]).toMatchObject({ email: 'haianh@gmail.com', role: 'PARENT', status: 'ACTIVE' })
+    expect((await call('GET', '/users', { query: { query: 'pending@gmail.com' } })).data.items).toHaveLength(0) // chưa kích hoạt thì chưa là tài khoản
+    expect((await call('GET', '/users', { query: { query: 'Blnkhole' } })).data.items).toHaveLength(1) // gọi lại không trùng
+    // Admin khóa rồi vẫn không bị thêm lại thành ACTIVE
+    await call('PATCH', `/users/${r1.data.items[0].id}/status`, { body: { status: 'LOCKED' } })
+    expect((await call('GET', '/users', { query: { query: 'Blnkhole' } })).data.items[0].status).toBe('LOCKED')
+    localStorage.removeItem('mock_db')
+  })
+})
+
+describe('đăng nhập với backend thật', () => {
+  const backendLogin = (role) => ({ user: { id: 'u1', email: 'x@demo.com', fullName: 'Người Dùng', role, status: 'ACTIVE' }, token: 'jwt-token', expiresIn: 3600 })
+  const mockFetch = (status, body) => vi.fn(async () => ({ ok: status < 400, status, json: async () => body }))
+
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.resetModules() })
+
+  it('gọi POST /auth/login, đổi vai trò về khóa ROLES và giữ token để gửi Authorization', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'false'); vi.stubEnv('VITE_API_URL', 'http://api.test')
+    const fetchMock = mockFetch(200, backendLogin('MEDICAL_STAFF'))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.resetModules()
+    const { login } = await import('./auth.js')
+    const session = await login('  X@Demo.com ', 'Password@123')
+    expect(fetchMock).toHaveBeenCalledWith('http://api.test/auth/login', expect.objectContaining({ method: 'POST', body: JSON.stringify({ email: 'X@Demo.com', password: 'Password@123' }) }))
+    expect(session).toMatchObject({ user: { id: 'u1', email: 'x@demo.com', role: 'medical' }, token: 'jwt-token', accessToken: 'jwt-token' })
+  })
+
+  it.each([['ADMIN', 'admin'], ['MANAGER', 'manager'], ['TEACHER', 'teacher'], ['PARENT', 'parent']])('vai trò %s -> %s', async (api, key) => {
+    vi.stubEnv('VITE_USE_MOCK', 'false')
+    vi.stubGlobal('fetch', mockFetch(200, backendLogin(api)))
+    vi.resetModules()
+    const { login, ROLES } = await import('./auth.js')
+    const session = await login('x@demo.com', 'p')
+    expect(session.user.role).toBe(key)
+    expect(ROLES[session.user.role].home).toBeTruthy() // Login.jsx điều hướng bằng ROLES[role].home
+  })
+
+  it('lỗi từ backend giữ nguyên code và message', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'false')
+    vi.stubGlobal('fetch', mockFetch(401, { code: 'INVALID_CREDENTIALS', message: 'Email hoặc mật khẩu không đúng.' }))
+    vi.resetModules()
+    const { login } = await import('./auth.js')
+    await expect(login('a@b.vn', 'x')).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS', message: 'Email hoặc mật khẩu không đúng.' })
+    vi.stubGlobal('fetch', mockFetch(403, { code: 'ACCOUNT_PENDING', message: 'Tài khoản đang chờ admin duyệt.' }))
+    await expect(login('a@b.vn', 'x')).rejects.toMatchObject({ code: 'ACCOUNT_PENDING' })
+  })
+
+  it('không kết nối được backend: báo lỗi dễ hiểu', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'false')
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+    vi.resetModules()
+    const { login } = await import('./auth.js')
+    await expect(login('a@b.vn', 'x')).rejects.toMatchObject({ code: 'NETWORK' })
+  })
+
+  it('các API khác gửi Authorization: Bearer; 401 thì xóa phiên và quay về /login', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'false'); vi.stubEnv('VITE_API_URL', 'http://api.test')
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ items: [] }) })
+      .mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({ message: 'Unauthorized' }) })
+    vi.stubGlobal('fetch', fetchMock)
+    const assign = vi.fn()
+    vi.stubGlobal('location', { assign })
+    vi.resetModules()
+    const { saveSession, getSession } = await import('./auth.js')
+    saveSession({ user: { email: 'x@demo.com', role: 'teacher' }, token: 'jwt-token', accessToken: 'jwt-token' })
+    const { api } = await import('./http.js')
+    await api('GET', '/classes', { query: { status: 'ACTIVE', limit: 100, empty: '' } })
+    expect(fetchMock.mock.calls[0][0]).toBe('http://api.test/classes?status=ACTIVE&limit=100')
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer jwt-token')
+    await expect(api('GET', '/classes')).rejects.toBeTruthy()
+    expect(getSession()).toBeNull()
+    expect(assign).toHaveBeenCalledWith('/login')
   })
 })

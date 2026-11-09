@@ -75,7 +75,13 @@ function CreateModal({ classes, defaultClass, onClose, onDone }) {
   const children = kids?.items ?? []
   const sel = picked ?? new Set(children.map((c) => c.id))
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
-  const toggle = (id) => setPicked(() => { const n = new Set(sel); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const toggle = (id) =>
+  setPicked(() => {
+    const n = new Set(sel)
+    if (n.has(id)) n.delete(id)
+    else n.add(id)
+    return n
+  })
   const a11y = (k) => ({ 'aria-invalid': !!errors[k], 'aria-describedby': errors[k] ? `${k}-err` : undefined })
 
   const onFiles = async (e) => {

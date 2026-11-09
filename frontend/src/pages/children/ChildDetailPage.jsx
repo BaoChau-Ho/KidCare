@@ -195,11 +195,11 @@ function ParentsTab({ child, onLinked, onEdit }) {
       {child.parents ? (
         <div className="table-wrap flat">
           <table>
-            <thead><tr><th>Họ tên</th><th>Quan hệ</th><th>Email</th><th>Điện thoại</th></tr></thead>
+            <thead><tr><th>Họ tên</th><th>Quan hệ</th></tr></thead>
             <tbody>
-              {child.parents.length === 0 && <tr><td colSpan="4" className="empty">Chưa liên kết phụ huynh nào.</td></tr>}
+              {child.parents.length === 0 && <tr><td colSpan="2" className="empty">Chưa liên kết phụ huynh nào.</td></tr>}
               {child.parents.map((p) => (
-                <tr key={p.userId}><td>{p.fullName}</td><td>{RELATIONSHIP[p.relationship]}</td><td>{p.email}</td><td>{p.phone || '\u2014'}</td></tr>
+                <tr key={p.userId}><td>{p.fullName}</td><td>{RELATIONSHIP[p.relationship]}</td></tr>
               ))}
             </tbody>
           </table>

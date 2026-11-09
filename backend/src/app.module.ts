@@ -7,6 +7,8 @@ import { RegistrationRequestsModule } from './registration-requests/registration
 import { UsersModule } from './users/users.module';
 import { ClassesModule } from './classes/classes.module';
 import { ChildrenModule } from './children/children.module';
+import { AttendanceModule } from './attendance/attendance.module';
+import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { ChildrenModule } from './children/children.module';
     UsersModule,
     ClassesModule,
     ChildrenModule,
+    AttendanceModule,
+    LeaveRequestsModule,
     HealthModule,
     RegistrationRequestsModule,
   ],
