@@ -43,11 +43,17 @@ export type QueryBuilderMock = Record<
   | 'addOrderBy'
   | 'skip'
   | 'take'
-  | 'getManyAndCount',
+  | 'getManyAndCount'
+  | 'getMany'
+  | 'getOne'
+  | 'getExists',
   jest.Mock
 >;
 
-/** QueryBuilder giả: các hàm nối chuỗi trả lại chính nó, `getManyAndCount` trả `[items, total]`. */
+/**
+ * QueryBuilder giả: các hàm nối chuỗi trả lại chính nó, `getManyAndCount` trả `[items, total]`,
+ * `getMany` trả `items`, `getOne` trả phần tử đầu (hoặc null), `getExists` trả có phần tử hay không.
+ */
 export function createQueryBuilderMock(
   items: unknown[] = [],
   total = items.length,
@@ -66,6 +72,9 @@ export function createQueryBuilderMock(
     qb[method] = jest.fn(() => qb);
   }
   qb.getManyAndCount = jest.fn().mockResolvedValue([items, total]);
+  qb.getMany = jest.fn().mockResolvedValue(items);
+  qb.getOne = jest.fn().mockResolvedValue(items[0] ?? null);
+  qb.getExists = jest.fn().mockResolvedValue(items.length > 0);
   return qb;
 }
 

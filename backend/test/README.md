@@ -9,8 +9,8 @@ Cập nhật lần cuối: **09/11/2026**, trên `main` tại commit `bdf5064` (
 | 0 | Hạ tầng: health check | 3 | 0 | 0 | ✅ Xong |
 | 1 | Đăng nhập, đăng ký, duyệt đăng ký (UC-01, UC-02) | 118 | 4 | 0 | 🟡 Còn `RolesGuard` chưa có code |
 | 2 | Tài khoản, lớp, hồ sơ trẻ (UC-03, UC-04, UC-05) | 88 | 0 | 0 | ✅ Unit xong |
-| 3 | Điểm danh, nghỉ học (UC-06, UC-07, UC-08) | 18 | 0 | 0 | 🟡 Chỉ có test hàm giờ/trạng thái; chưa có unit test cho service, DTO |
-| | **Tổng unit** | **227** | **4** | **0** | |
+| 3 | Điểm danh, nghỉ học (UC-06, UC-07, UC-08) | 214 | 0 | 0 | ✅ Unit xong |
+| | **Tổng unit** | **423** | **4** | **0** | |
 
 | E2E (API thật + PostgreSQL thật) | File | Đạt | Trong đó lỗi đã biết |
 |---|---|---|---|
@@ -24,7 +24,7 @@ Cập nhật lần cuối: **09/11/2026**, trên `main` tại commit `bdf5064` (
 | 3 · Response khớp `openapi.yaml` | `openapi-contract.e2e-spec.ts` | 3 | 0 |
 | **Tổng e2e** | | **200** | **6** |
 
-Unit test stage 3 nằm cạnh code: `src/attendance/attendance-policy.spec.ts` (14) và `src/common/school-time.spec.ts` (4). E2E stage 3 nằm ở gốc `test/`, do người viết code stage 3 viết kèm PR #19.
+Unit test stage 3 gồm 196 test trong `test/unit/stage-3/` và 18 test nằm cạnh code (`src/attendance/attendance-policy.spec.ts`: 14, `src/common/school-time.spec.ts`: 4). E2E stage 3 nằm ở gốc `test/`, do người viết code stage 3 viết kèm PR #19.
 
 - **Đạt:** test đã chạy và qua.
 - **Todo:** test đã đặt tên (`it.todo`) nhưng chưa viết phần thân, vì code tương ứng chưa có. Todo không làm CI đỏ.
@@ -50,7 +50,8 @@ backend/test/
 └── unit/
     ├── stage-0/            giai đoạn 0 — hạ tầng
     ├── stage-1/            giai đoạn 1 — đăng nhập, đăng ký
-    └── stage-2/            giai đoạn 2 — tài khoản, lớp, hồ sơ trẻ
+    ├── stage-2/            giai đoạn 2 — tài khoản, lớp, hồ sơ trẻ
+    └── stage-3/            giai đoạn 3 — điểm danh, đơn nghỉ
 ```
 
 - Unit test: `test/unit/stage-<số>/<tên>.spec.ts`. Kiểm tra một class, mọi phụ thuộc (repository, `DataSource`, `JwtService`, `argon2`) đều được giả lập. Không cần database.
@@ -153,6 +154,30 @@ Phần cần làm khi có API giai đoạn 2:
 - [x] Test E2E: Quản lý tạo lớp → tạo trẻ → gắn phụ huynh → phụ huynh đăng nhập thấy con (E2E-FLOW-01).
 - [x] Chạy lại toàn bộ test giai đoạn 0–1 (regression): 121 unit + 41 e2e giai đoạn 0–1 đạt ngày 06/11/2026.
 
+### Giai đoạn 3 — `unit/stage-3/`
+
+| File | Class được test | Mã test | Đạt | Todo |
+|---|---|---|---|---|
+| `child-access.service.spec.ts` | `ChildAccessService` | UT-ACCESS-01 → 13 | 16 | 0 |
+| `attendance-leave-dto.spec.ts` | 5 DTO điểm danh, 3 DTO đơn nghỉ | UT-DTO-ATT-01 → 10, UT-DTO-LEAVE-01 → 05 | 48 | 0 |
+| `attendance.service.spec.ts` | `AttendanceService` (UC-06, UC-07) | UT-ATT-01 → 73 | 74 | 0 |
+| `leave-requests.service.spec.ts` | `LeaveRequestsService` (UC-08) | UT-LEAVE-01 → 44 | 49 | 0 |
+| `db-errors.spec.ts` | `isUniqueViolation`, `isExclusionViolation` | UT-DBERR-01 → 03 | 9 | 0 |
+
+Số 49 của `leave-requests.service.spec.ts` gồm 1 test `it.failing` (UT-LEAVE-05b, vấn đề #22).
+
+"Bây giờ" được cố định là 10:00 ngày 09/11/2026 giờ Việt Nam bằng `jest.useFakeTimers`, nên kết quả không phụ thuộc lúc chạy. `ChildAccessService` dùng bản thật nối với repository giả, để test quyền đi qua đúng code kiểm tra quyền.
+
+Kiểm tra:
+
+- **Quyền và IDOR:** vai trò không được phép bị chặn trước khi chạm database; giáo viên chỉ thao tác lớp được phân công; phụ huynh đổi id trẻ trên URL nhận 403 và không đọc được dữ liệu; đơn nghỉ của phụ huynh khác trả 404 khi rút.
+- **Giờ và trạng thái:** 08:00 là PRESENT, 08:01 là LATE; "hôm nay" tính theo giờ Việt Nam kể cả lúc 00:30 (17:30 UTC hôm trước); từ chối ngày/giờ tương lai (cho lệch 1 phút), giờ khác ngày điểm danh, ngày đã qua thiếu giờ; PRESENT/LATE do server tính lại khi sửa giờ.
+- **Thứ tự check-in/out:** check-out khi chưa check-in, khi vắng, khi đã check-out đều 409; giờ về trước giờ đến 400.
+- **Trùng và ghi đồng thời:** điểm danh trùng ngày và đơn nghỉ giao nhau bị 409, kể cả khi database báo lỗi ràng buộc (23505, 23P01) lúc hai request chạy song song; khóa dòng khi check-out, sửa điểm danh, duyệt và rút đơn.
+- **Đơn nghỉ:** khoảng ngày hợp lệ; chỉ đơn PENDING/APPROVED tính là trùng; chỉ đơn PENDING được duyệt, từ chối, rút; từ chối lưu lý do.
+- **Audit và sự kiện:** audit ghi trong cùng transaction với đúng người làm, hành động, giá trị trước/sau, IP; lý do nghỉ không bị ghi vào audit; sự kiện chỉ phát sau khi lưu thành công; lỗi giữa chừng được ném ra để rollback.
+- **Hiệu năng:** gắn tên trẻ, lớp, phụ huynh theo lô, 3 đơn chỉ tốn 1 truy vấn mỗi bảng.
+
 ### E2E — `e2e/`
 
 Kiểm tra:
@@ -190,6 +215,9 @@ Kiểm tra:
 | 19 | `openapi.yaml` lệch với code giai đoạn 3: roster lớp, trạng thái hôm nay của trẻ, thiếu `PATCH /leave-requests/{id}/cancel`. Test: `openapi-contract.e2e-spec.ts` | `docs/02-design/openapi.yaml` | Minor | Đã sửa (`a856816`, PR #20) |
 | 20 | `DatabaseModule` không đóng DataSource khi app tắt (`app.close()`). Trong test, Jest không thoát; khi chạy thật, tắt app không đóng kết nối PostgreSQL. Test đã tự đóng trong hai khung e2e. Nên thêm `OnApplicationShutdown` vào `DatabaseModule` | `src/database/database.module.ts` | Minor | Mở |
 | 21 | Còn 6 cảnh báo lint (không làm CI đỏ): `no-misused-spread` ở `audit-logs.service.ts:101`, `require-array-sort-compare` ở `attendance-leave.e2e-spec.ts:96`, 4 `restrict-template-expressions` ở `openapi-contract.e2e-spec.ts` | `src/`, `test/` | Trivial | Mở |
+| 22 | Đơn nghỉ dài 367 ngày vẫn được nhận dù thông báo lỗi ghi "tối đa 366 ngày": service so `daysBetween(from, to) > 366`, mà `daysBetween` không tính ngày đầu. Sửa: so `daysBetween(from, to) + 1 > 366` hoặc `>= 366`. Test: UT-LEAVE-05b | `LeaveRequestsService.validateDates` | Trivial | Mở |
+| 23 | Bản ghi EARLY_LEAVE, giáo viên chỉ sửa giờ về (không gửi `status`) thì trạng thái bị tính lại thành PRESENT/LATE, mất EARLY_LEAVE. Test ghi nhận hành vi hiện tại: UT-ATT-52 | `AttendanceService.update` | Cần nhóm chốt | Mở |
+| 24 | Phụ huynh rút đơn không phát sự kiện, nên khi có Stage 6 giáo viên sẽ không được báo đơn đã rút. Test ghi nhận hành vi hiện tại: UT-LEAVE-44 | `LeaveRequestsService.cancel` | Cần nhóm chốt | Mở |
 
 ## Cách cập nhật file này
 
@@ -208,3 +236,4 @@ Mỗi khi thêm hoặc chuyển test từ `todo` sang chạy thật:
 | 06/11/2026 | Viết thân 30 todo giai đoạn 2 thành 88 test đạt (`UsersService`, `ClassesService`, `ChildrenService`); thêm QueryBuilder giả vào `helpers/mocks.ts`; ghi nhận vấn đề #9–#13; đánh dấu #8 đã sửa |
 | 06/11/2026 | Thêm hạ tầng e2e (database tạm cho mỗi file) và 142 e2e test giai đoạn 0–2: health, migration, đăng nhập, token, đăng ký, ma trận phân quyền, IDOR, ghi đồng thời, transaction; ghi nhận vấn đề #14–#17 |
 | 09/11/2026 | Đưa test giai đoạn 0-2 (nhánh `feature/backend-tests-stage-0-2`) lên `main` sau PR #19, #20. Ghi nhận test giai đoạn 3 có sẵn (18 unit, 58 e2e) và hai khung e2e. `createTestApp` tự đóng DataSource để Jest thoát. Hướng dẫn chạy e2e trên database `kidcare_test` riêng. Đánh dấu #2 đã sửa; ghi nhận #18-#21. Kết quả: unit 227 đạt, 4 todo; e2e 200/200 đạt |
+| 09/11/2026 | Thêm 196 unit test giai đoạn 3 (`ChildAccessService`, DTO, `AttendanceService`, `LeaveRequestsService`, `db-errors`); thêm `getMany`, `getOne`, `getExists` vào QueryBuilder giả; ghi nhận vấn đề #22-#24. Kết quả: unit 423 đạt, 4 todo |
