@@ -1,15 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import Ajv2020 from "ajv/dist/2020";
-import addFormats from "ajv-formats";
-import { load } from "js-yaml";
 import { INestApplication } from "@nestjs/common";
-import type { Response } from "supertest";
 import { DataSource } from "typeorm";
 import { addDays, todayInSchool } from "../../src/common/school-time";
 import { api, createTestApp, resetDatabase, seedWorld } from "../helpers/test-app";
 import type { World } from "../helpers/test-app";
+import { controllerMentions, describeWhen, openApiMatcher } from "./helpers/spec-first";
 
 // Giai đoạn 4 — hồ sơ sức khỏe (UC-09). Test viết trước code, theo hợp đồng trong docs/02-design/openapi.yaml:
 // đơn vị cm, kg, °C; khoảng hợp lệ 30-150 cm, 2-50 kg, 34-42 °C; cảnh báo khi nhiệt độ >= 37.5 hoặc <= 35.
@@ -18,15 +13,7 @@ import type { World } from "../helpers/test-app";
 // File tự bỏ qua khi src/ chưa có controller nào khai báo route health-records hoặc health-summary.
 // Muốn chạy thử trước (để thấy test đỏ) thì đặt STAGE4_E2E=1.
 
-const SRC = resolve(__dirname, "../../src");
-const healthApiExists = () =>
-	readdirSync(SRC, { recursive: true })
-		.map(String)
-		.filter((file) => file.endsWith(".controller.ts"))
-		.some((file) => /health-records|health-summary/.test(readFileSync(join(SRC, file), "utf8")));
-const maybe = process.env.STAGE4_E2E === "1" || healthApiExists() ? describe : describe.skip;
-
-const SPEC_PATH = resolve(__dirname, "../../../docs/02-design/openapi.yaml");
+const maybe = describeWhen(controllerMentions(/health-records|health-summary/), "STAGE4_E2E");
 
 type Json = Record<string, any>;
 // Sắp xếp ổn định để so sánh danh sách không quy định thứ tự
@@ -45,8 +32,7 @@ maybe("GĐ4 · hồ sơ sức khỏe (UC-09)", () => {
 	let app: INestApplication;
 	let dataSource: DataSource;
 	let w: World;
-	let spec: { paths: Record<string, Record<string, { responses: Record<string, { content?: { "application/json"?: { schema?: unknown } } }> }>>; components: unknown };
-	let ajv: Ajv2020;
+	let expectSchema: ReturnType<typeof openApiMatcher>;
 
 	const http = () => api(app);
 	const today = () => todayInSchool();
@@ -72,21 +58,8 @@ maybe("GĐ4 · hồ sơ sức khỏe (UC-09)", () => {
 		return { record, peanut, milk, asthma, vaccine, visit };
 	}
 
-	// Đối chiếu phản hồi với schema trong openapi.yaml
-	const expectSchema = (path: string, method: string, res: Response) => {
-		const schema = spec.paths[path]?.[method]?.responses[String(res.status)]?.content?.["application/json"]?.schema;
-		const endpoint = `${method.toUpperCase()} ${path} -> ${res.status}`;
-		if (!schema) throw new Error(`openapi.yaml không mô tả ${endpoint}`);
-		const check = ajv.compile(JSON.parse(JSON.stringify(schema).replace(/"#\/components/g, '"spec#/components')));
-		const problems = check(res.body) ? [] : (check.errors ?? []).map((e) => `${e.instancePath || "(gốc)"} ${e.message}`);
-		expect({ endpoint, problems }).toEqual({ endpoint, problems: [] });
-	};
-
 	beforeAll(async () => {
-		spec = load(readFileSync(SPEC_PATH, "utf8")) as typeof spec;
-		ajv = new Ajv2020({ strict: false, allErrors: true });
-		addFormats(ajv);
-		ajv.addSchema({ $id: "spec", components: spec.components });
+		expectSchema = openApiMatcher();
 		({ app, dataSource } = await createTestApp());
 	});
 	afterAll(async () => { await app?.close(); });

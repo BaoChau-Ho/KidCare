@@ -1321,11 +1321,19 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  # ---------- UC-10 Hoạt động (Stage 5) ----------
+  # TEACHER tạo và cập nhật hoạt động cho lớp mình phụ trách; MANAGER chỉ xem.
+  # Ngày hoạt động không được ở tương lai (theo ngày Việt Nam).
+  # Ảnh: field "file", chỉ JPEG, PNG, WEBP (kiểm tra theo nội dung file, không tin tên file hay Content-Type),
+  # tối đa 2 MB mỗi ảnh (vượt thì 413), tối đa 6 ảnh mỗi hoạt động (vượt thì 409).
   /activities:
     get:
       tags: [Activities]
       operationId: listActivities
-      summary: Danh sách hoạt động theo lớp/ngày
+      summary: Danh sách hoạt động theo lớp/ngày (ngày mới nhất trước)
+      description: |
+        TEACHER chỉ thấy lớp mình phụ trách; lọc classId của lớp khác thì 403. MANAGER thấy mọi lớp.
+        PARENT, MEDICAL_STAFF, ADMIN: 403 (phụ huynh dùng GET /children/{childId}/activities).
       parameters:
         - name: classId
           in: query
@@ -1337,16 +1345,20 @@ paths:
         - { $ref: '#/components/parameters/Limit' }
       responses:
         '200':
-          description: Danh sách hoạt động
+          description: Danh sách hoạt động, sắp xếp date giảm dần
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ActivityPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Activities]
       operationId: createActivity
       summary: Giáo viên tạo hoạt động và chọn trẻ tham gia
+      description: |
+        Mọi trẻ trong participants phải đang học (ACTIVE) ở đúng lớp, nếu không trả 400 và không lưu gì.
+        childId lặp lại chỉ được ghi một lần. Lớp đã đóng (CLOSED) thì 409.
       requestBody:
         required: true
         content:
@@ -1362,12 +1374,16 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 
   /activities/{activityId}/participants:
     post:
       tags: [Activities]
       operationId: addActivityParticipants
       summary: Ghi nhận trẻ tham gia hoạt động
+      description: |
+        Thêm mới hoặc cập nhật participationStatus của từng trẻ. Trẻ phải đang học ở lớp của hoạt động, nếu không 400 và không lưu gì.
+        Chỉ TEACHER của lớp đó.
       parameters:
         - name: activityId
           in: path
@@ -1382,11 +1398,12 @@ paths:
               properties:
                 participants:
                   type: array
+                  minItems: 1
                   items: { $ref: '#/components/schemas/ActivityParticipantInput' }
               required: [participants]
       responses:
         '200':
-          description: Danh sách người tham gia đã cập nhật
+          description: Toàn bộ danh sách người tham gia sau khi cập nhật
           content:
             application/json:
               schema:
@@ -1401,7 +1418,8 @@ paths:
     post:
       tags: [Activities]
       operationId: uploadActivityImage
-      summary: Tải ảnh hoạt động lên object storage
+      summary: Giáo viên của lớp tải ảnh hoạt động
+      description: Database chỉ lưu metadata và objectKey; file nằm ở object storage (hoặc thư mục local khi demo).
       parameters:
         - name: activityId
           in: path
@@ -1417,10 +1435,11 @@ paths:
                 file:
                   type: string
                   format: binary
+                  description: JPEG, PNG hoặc WEBP, tối đa 2 MB
               required: [file]
       responses:
         '201':
-          description: Ảnh đã tải; database chỉ lưu metadata
+          description: Ảnh đã tải
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ActivityImage' }
@@ -1428,13 +1447,18 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '413': { $ref: '#/components/responses/PayloadTooLarge' }
 
   /children/{childId}/activities:
     get:
       tags: [Activities]
       operationId: listChildActivities
-      summary: Phụ huynh xem hoạt động của trẻ đã liên kết
+      summary: Xem các hoạt động trẻ đã tham gia (ngày mới nhất trước)
+      description: |
+        PARENT (trẻ đã liên kết), TEACHER (lớp phụ trách), MANAGER. MEDICAL_STAFF, ADMIN: 403.
+        Chỉ gồm hoạt động trẻ có participationStatus = JOINED.
+        Không trả danh sách participants (tên trẻ khác); thay bằng participantCount (số trẻ JOINED).
       parameters:
         - { $ref: '#/components/parameters/ChildId' }
         - { $ref: '#/components/parameters/Page' }
@@ -1444,16 +1468,24 @@ paths:
           description: Hoạt động của trẻ
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ActivityPage' }
+              schema: { $ref: '#/components/schemas/ChildActivityPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  # ---------- UC-11, UC-12 Đón trẻ (Stage 5) ----------
+  # PARENT tạo và hủy yêu cầu cho trẻ đã liên kết; TEACHER của lớp duyệt, từ chối, hoàn tất. MANAGER, MEDICAL_STAFF, ADMIN: 403.
+  # Trạng thái: PENDING -> APPROVED | REJECTED | CANCELLED; APPROVED -> COMPLETED. Chuyển sai trạng thái: 409.
+  # Số giấy tờ: chỉ TEACHER của lớp thấy đủ; người khác chỉ thấy 4 số cuối. Audit không ghi số giấy tờ, số điện thoại.
   /pickup-requests:
     get:
       tags: [Pickup]
       operationId: listPickupRequests
-      summary: Xem yêu cầu đón trẻ theo lớp/ngày/trạng thái
+      summary: Xem yêu cầu đón trẻ theo lớp/ngày/trạng thái (giờ đón sớm nhất trước)
+      description: |
+        PARENT chỉ thấy yêu cầu mình tạo. TEACHER thấy yêu cầu của trẻ thuộc lớp mình phụ trách; lọc classId lớp khác thì 403.
+        date lọc theo ngày (giờ Việt Nam) của expectedTime.
       parameters:
         - name: classId
           in: query
@@ -1468,16 +1500,20 @@ paths:
         - { $ref: '#/components/parameters/Limit' }
       responses:
         '200':
-          description: Danh sách yêu cầu đón
+          description: Danh sách yêu cầu đón, sắp xếp expectedTime tăng dần
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PickupRequestPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Pickup]
       operationId: createPickupRequest
       summary: Phụ huynh đăng ký người đón trẻ
+      description: |
+        Trẻ phải đã liên kết với phụ huynh (403) và đang học (409). expectedTime không được ở quá khứ (cho lệch 1 phút).
+        idNumber là CMND 9 số hoặc CCCD 12 số. phone được bỏ dấu cách, còn lại phải là 9-12 chữ số, có thể có dấu + ở đầu.
       requestBody:
         required: true
         content:
@@ -1493,12 +1529,14 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 
   /pickup-requests/{requestId}/cancel:
     patch:
       tags: [Pickup]
       operationId: cancelPickupRequest
       summary: Phụ huynh hủy yêu cầu còn PENDING
+      description: Yêu cầu của phụ huynh khác trả 404 (không để lộ là yêu cầu có tồn tại).
       parameters:
         - name: requestId
           in: path
@@ -1519,7 +1557,7 @@ paths:
     patch:
       tags: [Pickup]
       operationId: approvePickupRequest
-      summary: Giáo viên duyệt yêu cầu đón
+      summary: Giáo viên của lớp xác minh và duyệt yêu cầu đón
       parameters:
         - name: requestId
           in: path
@@ -1540,7 +1578,7 @@ paths:
     patch:
       tags: [Pickup]
       operationId: rejectPickupRequest
-      summary: Giáo viên từ chối yêu cầu đón
+      summary: Giáo viên của lớp từ chối yêu cầu đón
       parameters:
         - name: requestId
           in: path
@@ -1553,7 +1591,7 @@ paths:
             schema:
               type: object
               properties:
-                reason: { type: string, minLength: 1 }
+                reason: { type: string, minLength: 1, maxLength: 500, description: Được trim; toàn dấu cách bị từ chối }
               required: [reason]
       responses:
         '200':
@@ -1572,6 +1610,10 @@ paths:
       tags: [Pickup]
       operationId: completePickupRequest
       summary: Xác nhận đã giao trẻ và hoàn tất check-out
+      description: |
+        Chỉ yêu cầu APPROVED có expectedTime trong hôm nay. Trẻ phải đã check-in hôm nay và chưa check-out, nếu không 409.
+        Ghi check-out (giờ hiện tại) và đổi trạng thái COMPLETED trong cùng transaction; lỗi thì không đổi gì.
+        Hai request hoàn tất đồng thời: đúng một request thành công, request còn lại 409.
       parameters:
         - name: requestId
           in: path
@@ -2281,9 +2323,9 @@ components:
       type: object
       minProperties: 1
       properties:
-        height: { type: [number, 'null'], minimum: 30, maximum: 150, description: Chiều cao (cm), null để xóa }
-        weight: { type: [number, 'null'], minimum: 2, maximum: 50, description: Cân nặng (kg), null để xóa }
-        temperature: { type: [number, 'null'], minimum: 34, maximum: 42, description: Nhiệt độ (°C), null để xóa }
+        height: { type: [number, 'null'], minimum: 30, maximum: 150, description: 'Chiều cao (cm), null để xóa' }
+        weight: { type: [number, 'null'], minimum: 2, maximum: 50, description: 'Cân nặng (kg), null để xóa' }
+        temperature: { type: [number, 'null'], minimum: 34, maximum: 42, description: 'Nhiệt độ (°C), null để xóa' }
         note: { type: [string, 'null'], maxLength: 2000 }
 
     HealthAbnormal:
@@ -2431,7 +2473,7 @@ components:
         vaccineName: { type: string, minLength: 1, maxLength: 200, description: Được trim }
         doseNumber: { type: integer, minimum: 1, maximum: 10 }
         vaccinatedAt: { type: string, format: date, description: Không được ở tương lai }
-        nextDueDate: { type: string, format: date, description: Ngày hẹn mũi tiếp theo, phải sau vaccinatedAt }
+        nextDueDate: { type: string, format: date, description: 'Ngày hẹn mũi tiếp theo, phải sau vaccinatedAt' }
       required: [vaccineName, doseNumber, vaccinatedAt]
 
     Vaccination:
@@ -2506,19 +2548,20 @@ components:
         childId: { type: string, format: uuid }
         childName: { type: string }
         kind: { type: string, enum: [ALLERGY, CONDITION] }
-        allergen: { type: string, description: Tác nhân dị ứng, hoặc tên bệnh nền khi kind = CONDITION }
+        allergen: { type: string, description: 'Tác nhân dị ứng, hoặc tên bệnh nền khi kind = CONDITION' }
         severity:
           description: Mức độ dị ứng; null khi kind = CONDITION
           oneOf: [{ $ref: '#/components/schemas/AllergySeverity' }, { type: 'null' }]
       required: [childId, childName, kind, allergen, severity]
 
+    # UC-10: quyền, giới hạn ảnh xem ghi chú ở đầu nhóm path Activities.
     CreateActivityRequest:
       type: object
       properties:
         classId: { type: string, format: uuid }
-        title: { type: string, minLength: 1, maxLength: 200 }
+        title: { type: string, minLength: 1, maxLength: 200, description: Được trim; toàn dấu cách bị từ chối }
         description: { type: string, maxLength: 5000 }
-        date: { type: string, format: date }
+        date: { type: string, format: date, description: Không được ở tương lai }
         participants:
           type: array
           items: { $ref: '#/components/schemas/ActivityParticipantInput' }
@@ -2539,6 +2582,7 @@ components:
         - type: object
           properties:
             activityId: { type: string, format: uuid }
+            childName: { type: string }
           required: [activityId]
 
     Activity:
@@ -2546,24 +2590,48 @@ components:
       properties:
         id: { type: string, format: uuid }
         classId: { type: string, format: uuid }
+        className: { type: string }
         createdByTeacherUserId: { type: string, format: uuid }
+        createdByName: { type: [string, 'null'] }
         title: { type: string }
         description: { type: [string, 'null'] }
         date: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
         participants:
           type: array
           items: { $ref: '#/components/schemas/ActivityParticipant' }
         images:
           type: array
+          maxItems: 6
           items: { $ref: '#/components/schemas/ActivityImage' }
-      required: [id, classId, title, date]
+      required: [id, classId, createdByTeacherUserId, title, description, date, participants, images]
+
+    ChildActivity:
+      type: object
+      description: Hoạt động nhìn từ phía một trẻ; không có danh sách participants.
+      properties:
+        id: { type: string, format: uuid }
+        classId: { type: string, format: uuid }
+        className: { type: string }
+        createdByName: { type: [string, 'null'] }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        date: { type: string, format: date }
+        participantCount: { type: integer, minimum: 1 }
+        images:
+          type: array
+          maxItems: 6
+          items: { $ref: '#/components/schemas/ActivityImage' }
+      required: [id, classId, title, description, date, participantCount, images]
+      not: { required: [participants] }
 
     ActivityImage:
       type: object
       properties:
         id: { type: string, format: uuid }
         objectKey: { type: string }
-        url: { type: string, format: uri }
+        url: { type: string, format: uri-reference, description: URL tuyệt đối (object storage) hoặc đường dẫn tương đối (local) }
+        name: { type: [string, 'null'] }
       required: [id, objectKey, url]
 
     ActivityPage:
@@ -2575,28 +2643,49 @@ components:
         pageInfo: { $ref: '#/components/schemas/PageInfo' }
       required: [items, pageInfo]
 
+    ChildActivityPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ChildActivity' }
+        pageInfo: { $ref: '#/components/schemas/PageInfo' }
+      required: [items, pageInfo]
+
+    # UC-11, UC-12: quyền, trạng thái, che số giấy tờ xem ghi chú ở đầu nhóm path Pickup.
     CreatePickupRequest:
       type: object
       properties:
         childId: { type: string, format: uuid }
-        pickupPerson: { type: string, minLength: 1, maxLength: 150 }
-        relationship: { type: string, maxLength: 50 }
-        idNumber: { type: string, maxLength: 50 }
-        phone: { type: string, maxLength: 30 }
-        expectedTime: { type: string, format: date-time }
-      required: [childId, pickupPerson, relationship, expectedTime]
+        pickupPerson: { type: string, minLength: 1, maxLength: 150, description: Được trim }
+        relationship: { type: string, minLength: 1, maxLength: 50, description: 'Quan hệ của người đón với trẻ, ví dụ Ông nội' }
+        idNumber: { type: string, pattern: '^\s*(\d{9}|\d{12})\s*$', description: CMND 9 số hoặc CCCD 12 số }
+        phone: { type: string, maxLength: 30, description: 'Bỏ dấu cách thì phải khớp ^\+?\d{9,12}$' }
+        expectedTime: { type: string, format: date-time, description: Không được ở quá khứ }
+      required: [childId, pickupPerson, relationship, idNumber, expectedTime]
 
     PickupRequest:
       type: object
       properties:
         id: { type: string, format: uuid }
         childId: { type: string, format: uuid }
+        childName: { type: string }
+        className: { type: [string, 'null'] }
+        requesterUserId: { type: string, format: uuid }
+        requesterName: { type: [string, 'null'] }
         pickupPerson: { type: string }
         relationship: { type: string }
+        idNumber: { type: string, description: 'Đầy đủ với TEACHER của lớp; người khác chỉ thấy 4 số cuối, phần trước thay bằng •' }
+        phone: { type: [string, 'null'], description: Đã bỏ dấu cách }
         expectedTime: { type: string, format: date-time }
         status: { $ref: '#/components/schemas/PickupStatus' }
         verifiedByTeacherUserId: { type: [string, 'null'], format: uuid }
-      required: [id, childId, pickupPerson, relationship, expectedTime, status]
+        verifiedByName: { type: [string, 'null'] }
+        decisionReason: { type: [string, 'null'], description: Lý do từ chối }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+      required: [id, childId, requesterUserId, pickupPerson, relationship, idNumber, phone, expectedTime, status, verifiedByTeacherUserId, decisionReason, decidedAt, completedAt]
 
     PickupRequestPage:
       type: object

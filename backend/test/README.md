@@ -11,6 +11,7 @@ Cập nhật lần cuối: **09/11/2026**, trên `main` tại commit `bdf5064` (
 | 2 | Tài khoản, lớp, hồ sơ trẻ (UC-03, UC-04, UC-05) | 88 | 0 | 0 | ✅ Unit xong |
 | 3 | Điểm danh, nghỉ học (UC-06, UC-07, UC-08) | 214 | 0 | 0 | ✅ Unit xong |
 | 4 | Hồ sơ sức khỏe (UC-09) | 0 | 0 | 0 | ⏸ Chưa có code; e2e viết trước, tự bỏ qua |
+| 5 | Hoạt động, đón trẻ (UC-10, UC-11, UC-12) | 0 | 0 | 0 | ⏸ Chưa có code; e2e viết trước, tự bỏ qua |
 | | **Tổng unit** | **423** | **4** | **0** | |
 
 | E2E (API thật + PostgreSQL thật) | File | Đạt | Trong đó lỗi đã biết |
@@ -24,6 +25,7 @@ Cập nhật lần cuối: **09/11/2026**, trên `main` tại commit `bdf5064` (
 | 3 · Ràng buộc database | `database-constraints.e2e-spec.ts` | 9 | 0 |
 | 3 · Response khớp `openapi.yaml` | `openapi-contract.e2e-spec.ts` | 3 | 0 |
 | 4 · Hồ sơ sức khỏe | `e2e/stage-4-health.e2e-spec.ts` | 0 (102 bỏ qua) | 0 |
+| 5 · Hoạt động, đón trẻ | `e2e/stage-5-activity-pickup.e2e-spec.ts` | 0 (93 bỏ qua) | 0 |
 | **Tổng e2e** | | **200** | **6** |
 
 Unit test stage 3 gồm 196 test trong `test/unit/stage-3/` và 18 test nằm cạnh code (`src/attendance/attendance-policy.spec.ts`: 14, `src/common/school-time.spec.ts`: 4). E2E stage 3 nằm ở gốc `test/`, do người viết code stage 3 viết kèm PR #19.
@@ -42,8 +44,10 @@ backend/test/
 ├── e2e/
 │   ├── setup-env.ts        đặt JWT_SECRET mặc định trước khi nạp AppModule
 │   ├── helpers/app.ts      khung A: dựng app NestJS trên database tạm, tạo tài khoản + token JWT thật
+│   ├── helpers/spec-first.ts   cho e2e viết trước code: tự bật khi có controller, đối chiếu phản hồi với openapi.yaml
 │   ├── stage-<số>-*.e2e-spec.ts      e2e giai đoạn 0-2 (dùng khung A)
-│   └── stage-4-health.e2e-spec.ts    e2e giai đoạn 4, viết trước code (dùng khung B)
+│   ├── stage-4-health.e2e-spec.ts    e2e giai đoạn 4, viết trước code (dùng khung B)
+│   └── stage-5-activity-pickup.e2e-spec.ts   e2e giai đoạn 5, viết trước code (dùng khung B)
 ├── attendance-leave.e2e-spec.ts      e2e giai đoạn 3 (dùng khung B)
 ├── database-constraints.e2e-spec.ts
 ├── openapi-contract.e2e-spec.ts
@@ -185,7 +189,7 @@ Kiểm tra:
 
 Backend chưa có code hồ sơ sức khỏe. Test được viết trước theo hợp đồng UC-09 trong `docs/02-design/openapi.yaml`, chỉ gọi API qua HTTP nên không phụ thuộc tên entity hay bảng backend sẽ đặt.
 
-File tự bỏ qua (`describe.skip`) khi `src/` chưa có file `*.controller.ts` nào chứa `health-records` hoặc `health-summary`. Khi controller đầu tiên xuất hiện, test tự chạy và CI sẽ đỏ cho đến khi làm đủ hợp đồng. Muốn chạy trước để xem test đỏ: đặt `STAGE4_E2E=1`. Ngày 09/11/2026 chạy thử: 96 test đỏ vì 404, 6 test kiểm tra 404 (E2E-H4-34) đạt.
+File tự bỏ qua (`describe.skip`, qua `describeWhen` trong `e2e/helpers/spec-first.ts`) khi `src/` chưa có file `*.controller.ts` nào chứa `health-records` hoặc `health-summary`. Khi controller đầu tiên xuất hiện, test tự chạy và CI sẽ đỏ cho đến khi làm đủ hợp đồng. Muốn chạy trước để xem test đỏ: đặt `STAGE4_E2E=1`. Ngày 09/11/2026 chạy thử: 96 test đỏ vì 404, 6 test kiểm tra 404 (E2E-H4-34) đạt.
 
 | Nhóm | Mã test | Số test |
 |---|---|---|
@@ -208,6 +212,35 @@ Quy ước đã chốt trong OpenAPI (09/11/2026, lấy theo khoảng frontend �
 - **Thời gian:** ngày tiêm và thời điểm khám không được ở tương lai; ngày hẹn mũi sau phải sau ngày tiêm; mũi "sắp tới" là mũi hẹn trong 30 ngày tới hoặc đã quá hẹn.
 
 Khi backend làm stage 4, `resetDatabase` trong `helpers/test-app.ts` vẫn xóa được bảng sức khỏe nhờ `TRUNCATE ... CASCADE` (bảng có khóa ngoại tới `children`).
+
+### Giai đoạn 5 — `e2e/stage-5-activity-pickup.e2e-spec.ts`
+
+Backend chưa có code hoạt động và đón trẻ. Test viết trước theo hợp đồng UC-10, UC-11, UC-12 trong `docs/02-design/openapi.yaml`, cùng cách làm với giai đoạn 4.
+
+Hai nhóm bật riêng: nhóm hoạt động chạy khi có controller chứa route `activities`, nhóm đón trẻ chạy khi có controller chứa `pickup-requests`. Đặt `STAGE5_E2E=1` để chạy cả hai trước. Ngày 09/11/2026 chạy thử: 92 test đỏ vì 404, 1 test kiểm tra 404 (E2E-A5-24) đạt. Các bước check-in, check-out gọi sang API giai đoạn 3 đều chạy đúng.
+
+| Nhóm | Mã test | Số test |
+|---|---|---|
+| Tạo hoạt động | E2E-A5-01 → 08 | 22 |
+| Danh sách hoạt động | E2E-A5-09 → 11 | 3 |
+| Ghi nhận trẻ tham gia | E2E-A5-12 → 14 | 3 |
+| Ảnh hoạt động | E2E-A5-15 → 20 | 8 |
+| Hoạt động của một trẻ | E2E-A5-21 → 24 | 8 |
+| Audit, khớp `openapi.yaml` (hoạt động) | E2E-A5-25, 26 | 2 |
+| Đăng ký người đón | E2E-P5-01 → 06 | 25 |
+| Danh sách yêu cầu đón | E2E-P5-07 → 10 | 4 |
+| Hủy, duyệt, từ chối | E2E-P5-11 → 15 | 6 |
+| Hoàn tất giao trẻ | E2E-P5-16 → 23 | 10 |
+| Audit, khớp `openapi.yaml` (đón trẻ) | E2E-P5-24, 25 | 2 |
+
+Quy ước đã chốt trong OpenAPI (09/11/2026, lấy theo mock của frontend):
+
+- **Hoạt động:** chỉ TEACHER của lớp tạo và sửa; MANAGER chỉ xem. Ngày không được ở tương lai. Lớp CLOSED trả 409. Có trẻ không thuộc lớp hoặc đã nghỉ thì 400 và không lưu gì.
+- **Ảnh:** JPEG, PNG, WEBP, kiểm tra theo nội dung file (file chữ đặt tên `.png` bị từ chối); tối đa 2 MB (vượt thì 413) và 6 ảnh mỗi hoạt động (ảnh thứ 7 trả 409).
+- **Phụ huynh xem hoạt động của con:** chỉ hoạt động con có trạng thái JOINED; không trả danh sách trẻ khác, chỉ có `participantCount`.
+- **Đón trẻ:** PARENT tạo và hủy; TEACHER của lớp duyệt, từ chối, hoàn tất; MANAGER, MEDICAL_STAFF, ADMIN nhận 403. Giấy tờ là CMND 9 số hoặc CCCD 12 số, bắt buộc. Thời gian đón không được ở quá khứ.
+- **Che dữ liệu:** chỉ giáo viên của lớp thấy đủ số giấy tờ; phụ huynh thấy 4 số cuối. Audit không chứa số giấy tờ và số điện thoại.
+- **Hoàn tất:** chỉ yêu cầu APPROVED của hôm nay, trẻ đã check-in và chưa check-out. Check-out và đổi trạng thái nằm trong cùng transaction. Hai request đồng thời thì đúng một request thành công.
 
 ### E2E — `e2e/`
 
@@ -269,3 +302,4 @@ Mỗi khi thêm hoặc chuyển test từ `todo` sang chạy thật:
 | 09/11/2026 | Đưa test giai đoạn 0-2 (nhánh `feature/backend-tests-stage-0-2`) lên `main` sau PR #19, #20. Ghi nhận test giai đoạn 3 có sẵn (18 unit, 58 e2e) và hai khung e2e. `createTestApp` tự đóng DataSource để Jest thoát. Hướng dẫn chạy e2e trên database `kidcare_test` riêng. Đánh dấu #2 đã sửa; ghi nhận #18-#21. Kết quả: unit 227 đạt, 4 todo; e2e 200/200 đạt |
 | 09/11/2026 | Thêm 196 unit test giai đoạn 3 (`ChildAccessService`, DTO, `AttendanceService`, `LeaveRequestsService`, `db-errors`); thêm `getMany`, `getOne`, `getExists` vào QueryBuilder giả; ghi nhận vấn đề #22-#24. Kết quả: unit 423 đạt, 4 todo |
 | 09/11/2026 | Chốt hợp đồng UC-09 trong `openapi.yaml` (thêm 6 API dị ứng, bệnh nền; đơn vị, khoảng hợp lệ, ngưỡng sốt, lọc theo vai trò). Thêm 102 e2e giai đoạn 4 viết trước code, tự bỏ qua khi chưa có controller. Kết quả: e2e 200 đạt, 102 bỏ qua |
+| 09/11/2026 | Chốt hợp đồng UC-10, UC-11, UC-12 trong `openapi.yaml` (quyền, giới hạn ảnh, che số giấy tờ, chuyển trạng thái đón trẻ). Thêm 93 e2e giai đoạn 5 viết trước code. Tách phần bật test và kiểm tra schema ra `e2e/helpers/spec-first.ts`. Sửa 5 mô tả trong `openapi.yaml` (PR #23) bị dấu phẩy cắt thành key thừa. Kết quả: e2e 200 đạt, 195 bỏ qua |
