@@ -13,6 +13,8 @@ Chưa có activity hoặc pickup entity/module trong backend. Activity phụ thu
 5. Parent tạo/hủy yêu cầu PENDING; teacher lớp approve/reject; chỉ APPROVED mới complete.
 6. Complete phải thực hiện check-out và đổi pickup status trong transaction, tránh race/double completion.
 7. Cập nhật UI, OpenAPI, migration; tích hợp notification ở Stage 6.
+   OpenAPI đã chốt ngày 09/11/2026 (nhóm Activities, Pickup): quyền theo vai trò, ảnh JPEG/PNG/WEBP tối đa 2 MB và 6 ảnh mỗi hoạt động, giấy tờ CMND 9 số hoặc CCCD 12 số (chỉ giáo viên của lớp thấy đủ), điều kiện hoàn tất đón trẻ.
+   E2E viết trước theo hợp đồng này: `backend/test/e2e/stage-5-activity-pickup.e2e-spec.ts`, tự chạy khi có controller.
 
 ## Điều kiện hoàn tất
 
