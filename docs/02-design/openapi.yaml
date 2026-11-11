@@ -1636,7 +1636,7 @@ paths:
       operationId: listNotifications
       summary: Người dùng xem thông báo của mình
       parameters:
-        - name: unreadOnly
+        - name: unread
           in: query
           schema: { type: boolean, default: false }
         - { $ref: '#/components/parameters/Page' }
@@ -1664,6 +1664,23 @@ paths:
                 properties:
                   unreadCount: { type: integer, minimum: 0 }
                 required: [unreadCount]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /notifications/read-all:
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      summary: Đánh dấu mọi thông báo của người dùng hiện tại đã đọc
+      responses:
+        '200':
+          description: Số thông báo vừa được đánh dấu đã đọc
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: integer, minimum: 0 }
+                required: [updated]
         '401': { $ref: '#/components/responses/Unauthorized' }
 
   /notifications/{notificationId}/read:
@@ -2702,10 +2719,13 @@ components:
         id: { type: string, format: uuid }
         title: { type: string }
         content: { type: string }
+        type: { type: string, enum: [ATTENDANCE, LEAVE, HEALTH, ACTIVITY, PICKUP, ANNOUNCEMENT, SYSTEM] }
+        relatedType: { type: string, nullable: true }
+        relatedId: { type: string, format: uuid, nullable: true }
         channel: { type: string, enum: [IN_APP, PUSH_NOTIFICATION, EMAIL, SMS] }
         isRead: { type: boolean }
         createdAt: { type: string, format: date-time }
-      required: [id, title, content, channel, isRead, createdAt]
+      required: [id, title, content, type, channel, isRead, createdAt]
 
     NotificationPage:
       type: object
