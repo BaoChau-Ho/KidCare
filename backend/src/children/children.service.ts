@@ -64,7 +64,7 @@ export class ChildrenService {
 				"parentLink.childId = child.id AND parentLink.parentUserId = :actorId",
 				{ actorId: actor.id },
 			);
-		} else if (actor.role !== "MANAGER") {
+		} else if (actor.role !== "MANAGER" && actor.role !== "MEDICAL_STAFF") {
 			throw this.accessDenied();
 		}
 
@@ -73,7 +73,13 @@ export class ChildrenService {
 			.skip((query.page - 1) * query.limit)
 			.take(query.limit);
 		const [children, totalItems] = await qb.getManyAndCount();
-		const items = await Promise.all(children.map((child) => this.toResponse(child)));
+		const items = await Promise.all(
+			children.map((child) =>
+				actor.role === "MEDICAL_STAFF"
+					? this.toMedicalResponse(child)
+					: this.toResponse(child),
+			),
+		);
 
 		return {
 			items,
@@ -88,6 +94,7 @@ export class ChildrenService {
 
 	async getOne(id: string, actor: ChildActor) {
 		const child = await this.findChild(id);
+		if (actor.role === "MEDICAL_STAFF") return this.toMedicalResponse(child);
 		await this.assertCanView(child, actor);
 		return this.toResponse(child);
 	}
@@ -266,6 +273,23 @@ export class ChildrenService {
 					relationship: link.relationship,
 				};
 			}),
+		};
+	}
+
+	/** Hồ sơ rút gọn dành cho màn hình y tế; không trả ngày sinh, địa chỉ hay phụ huynh. */
+	private async toMedicalResponse(child: Child) {
+		const classroom = await this.dataSource
+			.getRepository(Classroom)
+			.findOne({
+				where: { id: child.classId },
+				select: { id: true, name: true },
+			});
+		return {
+			id: child.id,
+			name: child.name,
+			classId: child.classId,
+			className: classroom?.name ?? null,
+			status: child.status,
 		};
 	}
 

@@ -33,10 +33,17 @@ export interface LeaveRequestDecidedEvent {
 	reason: string | null;
 }
 
+export interface HealthRecordChangedEvent {
+	childId: string;
+	resourceType: "health_record" | "allergy" | "medical_condition" | "vaccination" | "medical_visit";
+	resourceId: string;
+}
+
 export interface DomainEvents {
 	"attendance.recorded": AttendanceRecordedEvent;
 	"leave-request.created": LeaveRequestCreatedEvent;
 	"leave-request.decided": LeaveRequestDecidedEvent;
+	"health-record.changed": HealthRecordChangedEvent;
 }
 
 type Handler<K extends keyof DomainEvents> = (payload: DomainEvents[K]) => void | Promise<void>;

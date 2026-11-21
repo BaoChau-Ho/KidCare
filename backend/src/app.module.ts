@@ -9,6 +9,8 @@ import { ClassesModule } from './classes/classes.module';
 import { ChildrenModule } from './children/children.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
+import { HealthRecordsModule } from './health-records/health-records.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
     ChildrenModule,
     AttendanceModule,
     LeaveRequestsModule,
+    HealthRecordsModule,
+    NotificationsModule,
     HealthModule,
     RegistrationRequestsModule,
   ],

@@ -42,10 +42,14 @@ export class ClassesService {
 	) {}
 
 	async list(query: ListClassesQueryDto, actor: ClassActor) {
-		if (actor.role !== "MANAGER" && actor.role !== "TEACHER") {
+		if (
+			actor.role !== "MANAGER" &&
+			actor.role !== "TEACHER" &&
+			actor.role !== "MEDICAL_STAFF"
+		) {
 			throw new ForbiddenException({
 				code: "CLASS_ACCESS_DENIED",
-				message: "Chỉ quản lý và giáo viên được xem danh sách lớp.",
+				message: "Vai trò này không được xem danh sách lớp.",
 			});
 		}
 
@@ -70,7 +74,13 @@ export class ClassesService {
 			.take(query.limit);
 
 		const [classes, totalItems] = await qb.getManyAndCount();
-		const items = await Promise.all(classes.map((classroom) => this.toResponse(classroom)));
+		const items = await Promise.all(
+			classes.map((classroom) =>
+				actor.role === "MEDICAL_STAFF"
+					? this.toMedicalResponse(classroom)
+					: this.toResponse(classroom),
+			),
+		);
 
 		return {
 			items,
@@ -260,6 +270,16 @@ export class ClassesService {
 			teacherUserIds: assignments.map(({ teacherUserId }) => teacherUserId),
 			teachers: teachers.map(({ id, fullName, email }) => ({ id, fullName: fullName ?? "", email })),
 			childCount,
+		};
+	}
+
+	/** Thông tin tối thiểu để nhân viên y tế lọc hồ sơ sức khỏe theo lớp. */
+	private async toMedicalResponse(classroom: Classroom) {
+		return {
+			id: classroom.id,
+			name: classroom.name,
+			academicYear: classroom.academicYear,
+			status: classroom.status,
 		};
 	}
 
