@@ -11,6 +11,8 @@ import { listChildren } from '../../services/children.js'
 import { listLeaveRequests, createLeaveRequest, cancelLeave } from '../../services/leave.js'
 import { LEAVE_STATUS, fmtDate } from '../../services/labels.js'
 import { todayStr } from '../../services/dates.js'
+import useMarkRelatedNotificationsRead from '../../hooks/useMarkRelatedNotificationsRead.js'
+import useNotificationTargetHighlight from '../../hooks/useNotificationTargetHighlight.js'
 
 // UC-08 — Phụ huynh gửi đơn xin nghỉ cho con và theo dõi trạng thái
 export default function LeavePage() {
@@ -18,6 +20,9 @@ export default function LeavePage() {
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   const { data, loading, error, reload } = useFetch(() => listLeaveRequests({ status, page, limit: 10 }), [status, page])
+  const highlightId = params.get('highlightId')
+  useMarkRelatedNotificationsRead(['leave', 'leave_request'], data?.items.map((item) => item.id))
+  useNotificationTargetHighlight(highlightId, data?.items)
   const { data: kidsPage } = useFetch(() => listChildren({ limit: 50 }), [])
   const kids = (kidsPage?.items ?? []).filter((c) => c.status === 'ACTIVE')
   const [dialog, setDialog] = useState(params.get('childId') ? { type: 'create' } : null)
@@ -44,7 +49,7 @@ export default function LeavePage() {
             {loading && !data && <tr><td colSpan="5" className="empty">Đang tải...</td></tr>}
             {data?.items.length === 0 && <tr><td colSpan="5" className="empty">Bạn chưa gửi đơn xin nghỉ nào.</td></tr>}
             {data?.items.map((l) => (
-              <tr key={l.id}>
+              <tr key={l.id} data-notification-target={l.id}>
                 <td>{l.childName}</td>
                 <td>{l.fromDate === l.toDate ? fmtDate(l.fromDate) : `${fmtDate(l.fromDate)} - ${fmtDate(l.toDate)}`}</td>
                 <td className="wrap">{l.reason}</td>

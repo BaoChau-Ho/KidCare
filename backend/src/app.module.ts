@@ -11,6 +11,8 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 import { HealthRecordsModule } from './health-records/health-records.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ActivitiesModule } from './activities/activities.module';
+import { PickupRequestsModule } from './pickup-requests/pickup-requests.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     LeaveRequestsModule,
     HealthRecordsModule,
     NotificationsModule,
+    ActivitiesModule,
+    PickupRequestsModule,
     HealthModule,
     RegistrationRequestsModule,
   ],

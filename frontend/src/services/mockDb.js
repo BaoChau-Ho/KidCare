@@ -121,13 +121,13 @@ function seedMore({ users, classes, children }) {
   const part = (a, kids) => kids.map((c) => ({ activityId: a.id, childId: c.id, participationStatus: 'JOINED' }))
   const activityParticipants = [...part(activities[0], [an, huy]), ...part(activities[1], [an, huy]), ...part(activities[2], [chauChild, linh])]
 
-  const n = (to, type, title, content, readAt = null, off = 0) => ({ id: uid(), recipientUserId: to.id, senderUserId: null, type, title, content, relatedType: null, relatedId: null, channel: 'IN_APP', createdAt: new Date(Date.now() - off * 60000).toISOString(), readAt })
+  const n = (to, type, title, content, readAt = null, off = 0, relatedType = null, relatedId = null) => ({ id: uid(), recipientUserId: to.id, senderUserId: null, type, title, content, relatedType, relatedId, channel: 'IN_APP', createdAt: new Date(Date.now() - off * 60000).toISOString(), readAt })
   const notifications = [
-    n(p1, 'ATTENDANCE', `${an.name} đã đến lớp`, 'Giờ đến 07:55.', null, 5),
-    n(p1, 'ACTIVITY', `${an.name} tham gia hoạt động "Đọc sách cùng cô"`, 'Mở mục Hoạt động để xem chi tiết.', new Date().toISOString(), 1500),
-    n(p2, 'LEAVE', `Đơn xin nghỉ của ${linh.name} đã được duyệt`, 'Nghỉ từ hôm nay.', null, 60),
-    n(ha, 'LEAVE', `Đơn xin nghỉ của ${huy.name}`, 'Chờ bạn duyệt.', null, 30),
-    n(chau, 'LEAVE', `Đơn xin nghỉ của ${huy.name}`, 'Chờ bạn duyệt.', null, 30),
+    n(p1, 'ATTENDANCE', `${an.name} đã đến lớp`, 'Giờ đến 07:55.', null, 5, 'attendance', an.id),
+    n(p1, 'ACTIVITY', `${an.name} tham gia hoạt động "Đọc sách cùng cô"`, 'Mở mục Hoạt động để xem chi tiết.', new Date().toISOString(), 1500, 'activity', activities[1].id),
+    n(p2, 'LEAVE', `Đơn xin nghỉ của ${linh.name} đã được duyệt`, 'Nghỉ từ hôm nay.', null, 60, 'leave', leaveRequests[1].id),
+    n(ha, 'LEAVE', `Đơn xin nghỉ của ${huy.name}`, 'Chờ bạn duyệt.', null, 30, 'leave', leaveRequests[0].id),
+    n(chau, 'LEAVE', `Đơn xin nghỉ của ${huy.name}`, 'Chờ bạn duyệt.', null, 30, 'leave', leaveRequests[0].id),
   ]
 
   const pickupRequests = [{
