@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 import type { User } from "../users/user.entity";
 import { ListNotificationsQueryDto } from "./dto/list-notifications-query.dto";
+import { MarkRelatedNotificationsReadDto } from "./dto/mark-related-notifications-read.dto";
 import { Notification } from "./notification.entity";
 
 type NotificationActor = Pick<User, "id" | "role">;
@@ -61,17 +62,42 @@ export class NotificationsService {
 		return { updated: result.affected ?? 0 };
 	}
 
+	async markRelatedRead(dto: MarkRelatedNotificationsReadDto, actor: NotificationActor) {
+		const result = await this.dataSource.getRepository(Notification)
+			.createQueryBuilder()
+			.update(Notification)
+			.set({ readAt: () => "now()" })
+			.where('"recipient_user_id" = :recipientUserId AND "related_type" = :relatedType AND "related_id" IN (:...relatedIds) AND "read_at" IS NULL', {
+				recipientUserId: actor.id,
+				relatedType: dto.relatedType,
+				relatedIds: dto.relatedIds,
+			})
+			.execute();
+		return { updated: result.affected ?? 0 };
+	}
+
 	async createHealthUpdate(recipientUserIds: string[], childId: string) {
 		if (!recipientUserIds.length) return;
-		const repository = this.dataSource.getRepository(Notification);
-		await repository.insert(recipientUserIds.map((recipientUserId) => repository.create({
-			recipientUserId,
-			senderUserId: null,
+		await this.createForUsers(recipientUserIds, {
 			type: "HEALTH",
 			title: "Hồ sơ sức khỏe đã được cập nhật",
 			content: "Nhà trường vừa cập nhật hồ sơ sức khỏe của bé. Đăng nhập để xem thông tin dành cho phụ huynh.",
-			relatedType: "child",
+			relatedType: "health",
 			relatedId: childId,
+		});
+	}
+
+	async createForUsers(
+		recipientUserIds: string[],
+		input: Pick<Notification, "type" | "title" | "content" | "relatedType" | "relatedId"> & Partial<Pick<Notification, "senderUserId">>,
+		manager?: EntityManager,
+	) {
+		const uniqueIds = [...new Set(recipientUserIds)];
+		if (!uniqueIds.length) return;
+		const repository = (manager ?? this.dataSource.manager).getRepository(Notification);
+		await repository.insert(uniqueIds.map((recipientUserId) => repository.create({
+			recipientUserId, senderUserId: input.senderUserId ?? null, type: input.type, title: input.title,
+			content: input.content, relatedType: input.relatedType, relatedId: input.relatedId,
 		})));
 	}
 

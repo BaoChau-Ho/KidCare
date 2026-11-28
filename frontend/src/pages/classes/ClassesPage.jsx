@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell.jsx'
 import Field from '../../components/Field.jsx'
 import Select from '../../components/Select.jsx'
@@ -11,11 +11,14 @@ import useDebounce from '../../hooks/useDebounce.js'
 import { listClasses, createClass, updateClass, assignTeachers, removeTeacher } from '../../services/classes.js'
 import { lookupUsers } from '../../services/users.js'
 import { CLASS_STATUS, USER_STATUS } from '../../services/labels.js'
+import useMarkRelatedNotificationsRead from '../../hooks/useMarkRelatedNotificationsRead.js'
+import useNotificationTargetHighlight from '../../hooks/useNotificationTargetHighlight.js'
 
 const LIMIT = 10
 
 // UC-05 — Quản lý lớp và phân công giáo viên: S1 thêm lớp, S2 sửa/đóng lớp, S3 phân công/gỡ giáo viên
 export default function ClassesPage() {
+  const [params] = useSearchParams()
   const [filters, setFilters] = useState({ academicYear: '', status: '' })
   const [page, setPage] = useState(1)
   const year = useDebounce(filters.academicYear)
@@ -23,6 +26,9 @@ export default function ClassesPage() {
     () => listClasses({ academicYear: year.trim(), status: filters.status, page, limit: LIMIT }),
     [year, filters.status, page],
   )
+  const highlightId = params.get('highlightId')
+  useMarkRelatedNotificationsRead('class', data?.items.map((item) => item.id))
+  useNotificationTargetHighlight(highlightId, data?.items)
   const [dialog, setDialog] = useState(null) // { type: 'create' | 'edit' | 'teachers' | 'close', cls }
   const [flash, setFlash] = useState('')
 
@@ -57,7 +63,7 @@ export default function ClassesPage() {
             {loading && !data && <tr><td colSpan="6" className="empty">Đang tải...</td></tr>}
             {data?.items.length === 0 && <tr><td colSpan="6" className="empty">Chưa có lớp nào. Chọn "Thêm lớp" để tạo lớp đầu tiên.</td></tr>}
             {data?.items.map((c) => (
-              <tr key={c.id} className={c.status === 'ACTIVE' ? '' : 'row-off'}>
+              <tr key={c.id} data-notification-target={c.id} className={c.status === 'ACTIVE' ? '' : 'row-off'}>
                 <td>{c.name}</td>
                 <td>{c.academicYear}</td>
                 <td>

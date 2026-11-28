@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell.jsx'
 import Field from '../../components/Field.jsx'
 import Select from '../../components/Select.jsx'
@@ -10,15 +11,21 @@ import { listChildren } from '../../services/children.js'
 import { listPickups, createPickup, cancelPickup } from '../../services/pickups.js'
 import { PICKUP_STATUS, PICKER_RELATIONS, fmtDT } from '../../services/labels.js'
 import { todayStr, nowTime, localIso } from '../../services/dates.js'
+import useMarkRelatedNotificationsRead from '../../hooks/useMarkRelatedNotificationsRead.js'
+import useNotificationTargetHighlight from '../../hooks/useNotificationTargetHighlight.js'
 
 const ID_RE = /^\d{9}$|^\d{12}$/
 const PHONE_RE = /^\+?\d{9,12}$/
 
 // UC-11 — Phụ huynh đăng ký trước người được phép đón trẻ để giáo viên xác minh
 export default function PickupsPage() {
+  const [params] = useSearchParams()
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   const { data, loading, error, reload } = useFetch(() => listPickups({ status, page, limit: 10 }), [status, page])
+  const highlightId = params.get('highlightId')
+  useMarkRelatedNotificationsRead(['pickup', 'pickup_request'], data?.items.map((item) => item.id))
+  useNotificationTargetHighlight(highlightId, data?.items)
   const { data: kidsPage } = useFetch(() => listChildren({ limit: 50 }), [])
   const kids = (kidsPage?.items ?? []).filter((c) => c.status === 'ACTIVE')
   const [dialog, setDialog] = useState(null)
@@ -45,7 +52,7 @@ export default function PickupsPage() {
             {loading && !data && <tr><td colSpan="6" className="empty">Đang tải...</td></tr>}
             {data?.items.length === 0 && <tr><td colSpan="6" className="empty">Bạn chưa đăng ký người đón nào.</td></tr>}
             {data?.items.map((p) => (
-              <tr key={p.id}>
+              <tr key={p.id} data-notification-target={p.id}>
                 <td>{p.childName}</td>
                 <td>{p.pickupPerson}<br /><span className="muted">{p.relationship}{p.phone ? `, ${p.phone}` : ''}</span></td>
                 <td>{p.idNumber}</td>

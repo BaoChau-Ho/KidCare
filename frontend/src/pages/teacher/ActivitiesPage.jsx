@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell.jsx'
 import Field from '../../components/Field.jsx'
 import Select from '../../components/Select.jsx'
@@ -11,15 +12,21 @@ import { listClassChildren } from '../../services/classes.js'
 import { fmtDate } from '../../services/labels.js'
 import { todayStr } from '../../services/dates.js'
 import { prepareImage } from '../../utils/image.js'
+import useMarkRelatedNotificationsRead from '../../hooks/useMarkRelatedNotificationsRead.js'
+import useNotificationTargetHighlight from '../../hooks/useNotificationTargetHighlight.js'
 
 const MAX_IMAGES = 6
 
 // UC-10 — Hoạt động của lớp: tạo hoạt động, chọn trẻ tham gia, đính kèm ảnh
 export default function ActivitiesPage() {
+  const [params] = useSearchParams()
   const { classes } = useMyClasses()
-  const [classId, setClassId] = useState('')
+  const [classId, setClassId] = useState(params.get('classId') ?? '')
   const [page, setPage] = useState(1)
   const { data, loading, error, reload } = useFetch(() => listActivities({ classId, page, limit: 6 }), [classId, page])
+  const highlightId = params.get('highlightId')
+  useMarkRelatedNotificationsRead('activity', data?.items.map((item) => item.id))
+  useNotificationTargetHighlight(highlightId, data?.items)
   const [creating, setCreating] = useState(false)
   const [flash, setFlash] = useState('')
 
@@ -39,7 +46,7 @@ export default function ActivitiesPage() {
 
       <div className="cards">
         {data?.items.map((a) => (
-          <article key={a.id} className="card">
+          <article key={a.id} className="card" data-notification-target={a.id}>
             <header>
               <h3>{a.title}</h3>
               <span className="muted">{a.className} &middot; {fmtDate(a.date)}</span>

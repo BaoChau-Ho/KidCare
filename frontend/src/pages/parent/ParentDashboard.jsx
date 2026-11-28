@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell.jsx'
 import ChildPills from '../../components/ChildPills.jsx'
 import Tabs from '../../components/Tabs.jsx'
@@ -12,16 +12,35 @@ import { getHealthSummary } from '../../services/health.js'
 import { listChildActivities } from '../../services/activities.js'
 import { ATTENDANCE_STATUS, fmtDate, fmtTime } from '../../services/labels.js'
 import { todayStr, addDays } from '../../services/dates.js'
+import useMarkRelatedNotificationsRead from '../../hooks/useMarkRelatedNotificationsRead.js'
+import useNotificationTargetHighlight from '../../hooks/useNotificationTargetHighlight.js'
 
 const TABS = [{ key: 'attendance', label: 'Điểm danh' }, { key: 'health', label: 'Sức khỏe' }, { key: 'activities', label: 'Hoạt động' }]
 
 // UC-07 — Phụ huynh theo dõi tình hình của con: hôm nay, lịch sử điểm danh, sức khỏe, hoạt động
 export default function ParentDashboard() {
+  const [params] = useSearchParams()
   const { data, loading, error, reload } = useFetch(() => listChildren({ limit: 50 }), [])
-  const kids = data?.items ?? []
-  const [sel, setSel] = useState('')
-  const [tab, setTab] = useState('attendance')
+  const kids = useMemo(() => data?.items ?? [], [data])
+  const [sel, setSel] = useState(params.get('childId') ?? '')
+  const [tab, setTab] = useState(params.get('tab') ?? 'attendance')
+  const highlightId = params.get('highlightId')
   const child = kids.find((c) => c.id === sel) ?? kids[0]
+  useEffect(() => {
+    if (!highlightId || params.get('tab') !== 'activities' || kids.length < 2) return
+    let alive = true
+    Promise.all(kids.map(async (item) => ({
+      childId: item.id,
+      activities: await listChildActivities(item.id, { page: 1, limit: 100 }),
+    }))).then((results) => {
+      const match = results.find(({ activities }) => activities.items.some((activity) => activity.id === highlightId))
+      if (alive && match) setSel(match.childId)
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [highlightId, kids, params])
+  const relatedType = tab === 'health' ? ['health', 'child'] : ['attendance', 'child']
+  useMarkRelatedNotificationsRead(relatedType, child ? [child.id] : [])
+  useNotificationTargetHighlight(highlightId, child ? [child] : [])
 
   return (
     <AppShell title="Con của tôi">
@@ -37,12 +56,14 @@ export default function ParentDashboard() {
 
       {child && (
         <>
+          <div data-notification-target={child.id}>
           <ChildPills children={kids} value={child.id} onChange={(id) => { setSel(id) }} />
           <TodayCard child={child} />
           <Tabs tabs={TABS} value={tab} onChange={setTab} label="Thông tin của bé" />
           {tab === 'attendance' && <AttendanceTab key={child.id} childId={child.id} />}
           {tab === 'health' && <HealthTab key={child.id} childId={child.id} />}
-          {tab === 'activities' && <ActivitiesTab key={child.id} childId={child.id} />}
+          {tab === 'activities' && <ActivitiesTab key={child.id} childId={child.id} highlightId={highlightId} />}
+          </div>
         </>
       )}
     </AppShell>
@@ -120,9 +141,11 @@ function HealthTab({ childId }) {
   )
 }
 
-function ActivitiesTab({ childId }) {
+function ActivitiesTab({ childId, highlightId }) {
   const [page, setPage] = useState(1)
   const { data, loading, error, reload } = useFetch(() => listChildActivities(childId, { page, limit: 5 }), [childId, page])
+  useMarkRelatedNotificationsRead('activity', data?.items.map((item) => item.id))
+  useNotificationTargetHighlight(highlightId, data?.items)
   return (
     <div>
       {error && <div className="alert" role="alert">{error} <button className="link-btn" onClick={reload}>Thử lại</button></div>}
@@ -130,7 +153,7 @@ function ActivitiesTab({ childId }) {
       {data?.items.length === 0 && <div className="panel empty-panel">Bé chưa tham gia hoạt động nào được ghi nhận.</div>}
       <div className="timeline">
         {data?.items.map((a) => (
-          <article key={a.id} className="card">
+          <article key={a.id} className="card" data-notification-target={a.id}>
             <header><h3>{a.title}</h3><span className="muted">{a.className} &middot; {fmtDate(a.date)}</span></header>
             {a.description && <p>{a.description}</p>}
             {a.images.length > 0 && <div className="thumbs">{a.images.map((im) => <img key={im.id} src={im.url} alt={`Ảnh hoạt động ${a.title}`} loading="lazy" />)}</div>}

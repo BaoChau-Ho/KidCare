@@ -67,7 +67,7 @@ route('POST', '/attendance/check-in', ({ db, actor, body }) => {
   db.attendance.push(rec)
   audit(db, actor, absent ? 'MARK_ABSENT' : 'CHECK_IN', 'attendance', rec.id, { label: child.name, after: { status: rec.status, ...(time && { checkInTime: time }) } })
   notify(db, parentsOf(db, child.id), {
-    type: 'ATTENDANCE', relatedType: 'child', relatedId: child.id,
+    type: 'ATTENDANCE', relatedType: 'attendance', relatedId: child.id,
     title: absent ? `${child.name} vắng mặt hôm nay` : `${child.name} đã đến lớp`,
     content: absent ? `Ngày ${date.split('-').reverse().join('/')}.` : `Giờ đến ${time}${rec.status === 'LATE' ? ' (muộn)' : ''}.`,
   })

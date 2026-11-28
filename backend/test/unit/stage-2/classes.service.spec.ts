@@ -185,6 +185,17 @@ describe('GĐ2 · ClassesService', () => {
       expect(await invalidFields(AssignTeachersDto, { teacherUserIds: [] })).toEqual(['teacherUserIds']);
     });
 
+    it('UT-CLASS-07c database unique violation during concurrent assignment returns 409', async () => {
+      users.findBy.mockResolvedValue([makeTeacher()]);
+      assignments.save.mockRejectedValue(Object.assign(new Error('duplicate key'), { code: '23505' }));
+
+      expectHttpError(
+        await getError(() => service.assignTeachers(CLASS_ID, { teacherUserIds: [TEACHER_ID] }, MANAGER, IP)),
+        ConflictException,
+        'ASSIGNMENT_EXISTS',
+      );
+    });
+
     it('UT-CLASS-07c phân công hợp lệ → lưu và audit log ghi danh sách cũ / mới', async () => {
       users.findBy.mockResolvedValue([makeTeacher()]);
       const result = await service.assignTeachers(CLASS_ID, { teacherUserIds: [TEACHER_ID] }, MANAGER, IP);
@@ -245,8 +256,21 @@ describe('GĐ2 · ClassesService', () => {
       expect(qb.innerJoin).toHaveBeenCalledWith(ClassTeacher, 'assignment', expect.any(String), { teacherId: TEACHER_ID });
     });
 
-    it.each(['ADMIN', 'PARENT', 'MEDICAL_STAFF'] as const)('UT-CLASS-09c vai trò %s không xem được danh sách lớp → 403', async (role) => {
+    it.each(['ADMIN', 'PARENT'] as const)('UT-CLASS-09c vai trò %s không xem được danh sách lớp → 403', async (role) => {
       expectHttpError(await getError(() => service.list(query(), { ...MANAGER, role })), ForbiddenException, 'CLASS_ACCESS_DENIED');
+    });
+
+    it('UT-CLASS-09d MEDICAL_STAFF chỉ nhận thông tin lớp tối thiểu', async () => {
+      classes.createQueryBuilder.mockReturnValue(createQueryBuilderMock([makeClass()], 1));
+
+      const result = await service.list(query(), { ...MANAGER, role: 'MEDICAL_STAFF' });
+
+      expect(result.items).toEqual([{
+        id: CLASS_ID,
+        name: 'Lá 1',
+        academicYear: '2026-2027',
+        status: 'ACTIVE',
+      }]);
     });
 
     it('UT-CLASS-09d giáo viên mở lớp không được phân công → 403; được phân công → xem được', async () => {

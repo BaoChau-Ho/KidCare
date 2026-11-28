@@ -5,4 +5,5 @@ export const listNotifications = (query) => api('GET', '/notifications', { query
 export const getUnreadCount = () => api('GET', '/notifications/unread-count')
 export const markRead = (id) => api('PATCH', `/notifications/${id}/read`, { body: {} })
 export const markAllRead = () => api('POST', '/notifications/read-all', { body: {} })
+export const markRelatedRead = (relatedType, relatedIds) => api('POST', '/notifications/read-related', { body: { relatedType, relatedIds } })
 export const broadcast = (body) => api('POST', '/notifications/broadcast', { body })
