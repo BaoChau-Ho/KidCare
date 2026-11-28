@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell.jsx'
 import Field from '../../components/Field.jsx'
 import Select from '../../components/Select.jsx'
@@ -10,21 +9,15 @@ import useFetch from '../../hooks/useFetch.js'
 import { listPickups, approvePickup, rejectPickup, completePickup } from '../../services/pickups.js'
 import { PICKUP_STATUS, fmtTime, fmtDate } from '../../services/labels.js'
 import { todayStr } from '../../services/dates.js'
-import useMarkRelatedNotificationsRead from '../../hooks/useMarkRelatedNotificationsRead.js'
-import useNotificationTargetHighlight from '../../hooks/useNotificationTargetHighlight.js'
 
 const mask = (s) => (s ? '\u2022'.repeat(Math.max(0, s.length - 4)) + s.slice(-4) : '\u2014')
 
 // UC-12 — Xác nhận đón trẻ: đối chiếu người đón, duyệt/từ chối, giao trẻ (ghi check-out)
 export default function PickupsPage() {
-  const [params] = useSearchParams()
-  const [date, setDate] = useState(params.get('date') ?? (params.has('highlightId') ? '' : todayStr()))
+  const [date, setDate] = useState(todayStr())
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   const { data, loading, error, reload } = useFetch(() => listPickups({ date, status, page, limit: 10 }), [date, status, page])
-  const highlightId = params.get('highlightId')
-  useMarkRelatedNotificationsRead(['pickup', 'pickup_request'], data?.items.map((item) => item.id))
-  useNotificationTargetHighlight(highlightId, data?.items)
   const [dialog, setDialog] = useState(null) // { type: 'approve' | 'reject' | 'complete', item }
   const [revealed, setRevealed] = useState({})
   const [flash, setFlash] = useState('')
@@ -52,7 +45,7 @@ export default function PickupsPage() {
             {loading && !data && <tr><td colSpan="6" className="empty">Đang tải...</td></tr>}
             {data?.items.length === 0 && <tr><td colSpan="6" className="empty">Không có yêu cầu đón trẻ nào trong ngày {fmtDate(date)}.</td></tr>}
             {data?.items.map((p) => (
-              <tr key={p.id} data-notification-target={p.id}>
+              <tr key={p.id}>
                 <td>{p.childName}<br /><span className="muted">{p.className}</span></td>
                 <td>{p.pickupPerson}<br /><span className="muted">{p.relationship}{p.phone ? `, ${p.phone}` : ''}</span></td>
                 <td>

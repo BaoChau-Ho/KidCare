@@ -2,7 +2,7 @@
 
 ## Tình trạng hiện tại
 
-Backend Stage 5 đã có entity, migration, API và phân quyền cho hoạt động/đón trẻ. Các phụ thuộc từ Stage 2–3 (lớp, trẻ, liên kết phụ huynh, phân công giáo viên, điểm danh/check-out) đã có trong repository. Ảnh hiện lưu trên filesystem local để demo; môi trường dùng chung cần cấu hình `ACTIVITY_UPLOAD_DIR` và `PUBLIC_API_URL`, hoặc thay bằng object storage. Chưa chạy E2E sau khi triển khai.
+Chưa có activity hoặc pickup entity/module trong backend. Activity phụ thuộc lớp/child/teacher; pickup ngoài các quan hệ đó còn tích hợp check-out của UC-06.
 
 ## Bước triển khai
 

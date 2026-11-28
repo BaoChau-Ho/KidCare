@@ -1,8 +1,7 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import type { AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { ListNotificationsQueryDto } from "./dto/list-notifications-query.dto";
-import { MarkRelatedNotificationsReadDto } from "./dto/mark-related-notifications-read.dto";
 import { NotificationsService } from "./notifications.service";
 
 @Controller("notifications")
@@ -28,10 +27,5 @@ export class NotificationsController {
 	@Post("read-all")
 	markAllRead(@Req() request: AuthenticatedRequest) {
 		return this.notifications.markAllRead(request.user);
-	}
-
-	@Post("read-related")
-	markRelatedRead(@Body() dto: MarkRelatedNotificationsReadDto, @Req() request: AuthenticatedRequest) {
-		return this.notifications.markRelatedRead(dto, request.user);
 	}
 }

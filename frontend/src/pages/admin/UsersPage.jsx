@@ -11,7 +11,6 @@ import useDebounce from '../../hooks/useDebounce.js'
 import { getSession, PASSWORD_RULES } from '../../services/auth.js'
 import { listUsers, createUser, updateUser, changeUserRole, changeUserStatus, listAuditLogs } from '../../services/users.js'
 import { ROLE_LABELS, USER_STATUS, ACTION_LABELS, fmtDateTime, diffText } from '../../services/labels.js'
-import { todayStr, addDays } from '../../services/dates.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const LIMIT = 10
@@ -213,15 +212,7 @@ function StatusDialog({ dialog, onClose, onSaved }) {
 function AuditPanel({ refreshKey }) {
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState(1)
-  const to = todayStr()
-  const from = addDays(to, -29)
-
-  const { data, loading, error } = useFetch(
-    () => (open
-      ? listAuditLogs({ from, to, page, limit: 8 })
-      : Promise.resolve(null)),
-    [open, page, refreshKey, from, to],
-  )
+  const { data, loading, error } = useFetch(() => (open ? listAuditLogs({ page, limit: 8 }) : Promise.resolve(null)), [open, page, refreshKey])
   return (
     <section>
       <h2>Nhật ký thao tác <button className="link-btn" onClick={() => setOpen((v) => !v)}>{open ? 'Ẩn' : 'Xem'}</button></h2>
@@ -236,11 +227,11 @@ function AuditPanel({ refreshKey }) {
                 {data?.items.length === 0 && <tr><td colSpan="5" className="empty">Chưa có thao tác nào được ghi.</td></tr>}
                 {data?.items.map((l) => (
                   <tr key={l.id}>
-                    <td>{fmtDateTime(l.createdAt)}</td>
-                    <td>{l.actorName || l.actorUserId || '—'}</td>
+                    <td>{fmtDateTime(l.at)}</td>
+                    <td>{l.actorEmail}</td>
                     <td>{ACTION_LABELS[l.action] ?? l.action}</td>
-                    <td>{l.resourceName || l.resourceId || '—'}</td>
-                    <td className="muted">{diffText(l.oldValue, l.newValue, l.resourceType)}</td>
+                    <td>{l.label}</td>
+                    <td className="muted">{diffText(l.before, l.after, l.resourceType)}</td>
                   </tr>
                 ))}
               </tbody>
