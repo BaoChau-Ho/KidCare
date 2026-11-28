@@ -245,8 +245,21 @@ describe('GĐ2 · ClassesService', () => {
       expect(qb.innerJoin).toHaveBeenCalledWith(ClassTeacher, 'assignment', expect.any(String), { teacherId: TEACHER_ID });
     });
 
-    it.each(['ADMIN', 'PARENT', 'MEDICAL_STAFF'] as const)('UT-CLASS-09c vai trò %s không xem được danh sách lớp → 403', async (role) => {
+    it.each(['ADMIN', 'PARENT'] as const)('UT-CLASS-09c vai trò %s không xem được danh sách lớp → 403', async (role) => {
       expectHttpError(await getError(() => service.list(query(), { ...MANAGER, role })), ForbiddenException, 'CLASS_ACCESS_DENIED');
+    });
+
+    it('UT-CLASS-09d MEDICAL_STAFF chỉ nhận thông tin lớp tối thiểu', async () => {
+      classes.createQueryBuilder.mockReturnValue(createQueryBuilderMock([makeClass()], 1));
+
+      const result = await service.list(query(), { ...MANAGER, role: 'MEDICAL_STAFF' });
+
+      expect(result.items).toEqual([{
+        id: CLASS_ID,
+        name: 'Lá 1',
+        academicYear: '2026-2027',
+        status: 'ACTIVE',
+      }]);
     });
 
     it('UT-CLASS-09d giáo viên mở lớp không được phân công → 403; được phân công → xem được', async () => {
