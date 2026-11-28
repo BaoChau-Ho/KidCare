@@ -1683,6 +1683,38 @@ paths:
                 required: [updated]
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /notifications/read-related:
+    post:
+      tags: [Notifications]
+      operationId: markRelatedNotificationsRead
+      summary: Mark notifications as read for resources the user just viewed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                relatedType: { type: string, maxLength: 50 }
+                relatedIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { type: string, format: uuid }
+              required: [relatedType, relatedIds]
+      responses:
+        '201':
+          description: Number of notifications marked as read for these resources
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: integer, minimum: 0 }
+                required: [updated]
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /notifications/{notificationId}/read:
     patch:
       tags: [Notifications]
@@ -1726,6 +1758,8 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 
   /reports/attendance:
     get:
@@ -1760,8 +1794,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: '#/components/schemas/ClassReport' }
+                $ref: '#/components/schemas/ClassesReport'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -1832,12 +1865,14 @@ components:
     FromDate:
       name: from
       in: query
-      required: true
+      description: Mặc định là 30 ngày gần nhất nếu bỏ qua.
+      required: false
       schema: { type: string, format: date }
     ToDate:
       name: to
       in: query
-      required: true
+      description: Mặc định là ngày hiện tại theo múi giờ của trường nếu bỏ qua.
+      required: false
       schema: { type: string, format: date }
 
   responses:
@@ -2746,42 +2781,84 @@ components:
           items: { type: string, format: uuid }
         title: { type: string, minLength: 1, maxLength: 200 }
         content: { type: string, minLength: 1, maxLength: 5000 }
-      required: [title, content]
-      oneOf:
-        - required: [classId]
-        - required: [childIds]
+      required: [classId, title, content]
 
     AttendanceReport:
       type: object
       properties:
         from: { type: string, format: date }
         to: { type: string, format: date }
-        totalChildren: { type: integer, minimum: 0 }
-        presentCount: { type: integer, minimum: 0 }
-        lateCount: { type: integer, minimum: 0 }
-        earlyLeaveCount: { type: integer, minimum: 0 }
-        attendanceRate: { type: number, minimum: 0, maximum: 1 }
-      required: [from, to, totalChildren, presentCount, attendanceRate]
+        summary: { $ref: '#/components/schemas/AttendanceTally' }
+        byClass:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/AttendanceTally'
+              - type: object
+                properties:
+                  classId: { type: string, format: uuid }
+                  className: { type: string }
+                  academicYear: { type: string }
+                required: [classId, className, academicYear]
+        byDay:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/AttendanceTally'
+              - type: object
+                properties:
+                  date: { type: string, format: date }
+                required: [date]
+      required: [from, to, summary, byClass, byDay]
+
+    AttendanceTally:
+      type: object
+      properties:
+        present: { type: integer, minimum: 0 }
+        late: { type: integer, minimum: 0 }
+        absent: { type: integer, minimum: 0 }
+        earlyLeave: { type: integer, minimum: 0 }
+        total: { type: integer, minimum: 0 }
+        attendanceRate: { type: [number, 'null'], minimum: 0, maximum: 1 }
+      required: [present, late, absent, earlyLeave, total, attendanceRate]
 
     ClassReport:
       type: object
       properties:
         classId: { type: string, format: uuid }
         className: { type: string }
+        academicYear: { type: string }
         childCount: { type: integer, minimum: 0 }
-        attendanceRate: { type: number, minimum: 0, maximum: 1 }
+        teacherCount: { type: integer, minimum: 0 }
         activityCount: { type: integer, minimum: 0 }
-      required: [classId, className]
+        leaveCount: { type: integer, minimum: 0 }
+        attendanceRate: { type: [number, 'null'], minimum: 0, maximum: 1 }
+      required: [classId, className, academicYear, childCount, teacherCount, activityCount, leaveCount, attendanceRate]
+
+    ClassesReport:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ClassReport' }
+      required: [from, to, items]
 
     HealthReport:
       type: object
       properties:
         from: { type: string, format: date }
         to: { type: string, format: date }
+        childCount: { type: integer, minimum: 0 }
         childrenWithAllergy: { type: integer, minimum: 0 }
         childrenWithCondition: { type: integer, minimum: 0 }
-        vaccinationRate: { type: number, minimum: 0, maximum: 1 }
-      required: [from, to]
+        measurements: { type: integer, minimum: 0 }
+        feverCases: { type: integer, minimum: 0 }
+        vaccinationsGiven: { type: integer, minimum: 0 }
+        vaccinationsDueSoon: { type: integer, minimum: 0 }
+        medicalVisits: { type: integer, minimum: 0 }
+      required: [from, to, childCount, childrenWithAllergy, childrenWithCondition, measurements, feverCases, vaccinationsGiven, vaccinationsDueSoon, medicalVisits]
 
     ApiError:
       type: object
