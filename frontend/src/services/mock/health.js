@@ -25,11 +25,11 @@ const sortDesc = (arr, key) => [...arr].sort((a, b) => String(b[key]).localeComp
 // Thông báo chung chung, không chứa chi tiết sức khỏe (stage-4/6)
 function notifyHealth(db, child, abnormal) {
   notify(db, parentsOf(db, child.id), {
-    type: 'HEALTH', relatedType: 'health', relatedId: child.id,
+    type: 'HEALTH', relatedType: 'child', relatedId: child.id,
     title: abnormal ? `Sức khỏe của ${child.name} cần lưu ý` : `Hồ sơ sức khỏe của ${child.name} vừa được cập nhật`,
     content: 'Mở mục Sức khỏe để xem chi tiết.',
   })
-  if (abnormal) notify(db, teachersOfClass(db, child.classId), { type: 'HEALTH', relatedType: 'health', relatedId: child.id, title: `Lưu ý sức khỏe của ${child.name}`, content: 'Hãy theo dõi bé và liên hệ nhân viên y tế.' })
+  if (abnormal) notify(db, teachersOfClass(db, child.classId), { type: 'HEALTH', relatedType: 'child', relatedId: child.id, title: `Lưu ý sức khỏe của ${child.name}`, content: 'Hãy theo dõi bé và liên hệ nhân viên y tế.' })
 }
 
 /* ---------- lọc theo vai trò: một chỗ duy nhất ---------- */

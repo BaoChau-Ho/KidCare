@@ -316,11 +316,6 @@ td.wrap { max-width: 260px; word-break: break-word; }
 .notif-body { display: flex; flex-direction: column; gap: .15rem; }
 .notif-title { font-weight: 500; }
 .notif.unread .notif-title { font-weight: 700; }
-.notification-target-highlight { animation: notification-target-pulse 2.4s ease-out; }
-@keyframes notification-target-pulse {
-  0%, 100% { background-color: transparent; }
-  18%, 58% { background-color: #fff0b8; }
-}
 .notif-content { color: var(--ink); }
 
 /* biểu đồ báo cáo (CSS thuần) */

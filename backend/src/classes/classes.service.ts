@@ -20,9 +20,12 @@ import { UpdateClassDto } from "./dto/update-class.dto";
 type ClassActor = Pick<User, "id" | "email" | "fullName" | "role">;
 
 function isUniqueViolation(error: unknown): boolean {
-	if (typeof error !== "object" || error === null) return false;
-	const candidate = error as { code?: unknown; driverError?: { code?: unknown } };
-	return candidate.code === "23505" || candidate.driverError?.code === "23505";
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		error.code === "23505"
+	);
 }
 
 @Injectable()
@@ -184,48 +187,41 @@ export class ClassesService {
 		ipAddress: string | null,
 	) {
 		this.assertManager(actor);
-		try {
-			return await this.dataSource.transaction(async (manager) => {
-				const classRepository = manager.getRepository(Classroom);
-				const classTeacherRepository = manager.getRepository(ClassTeacher);
-				const userRepository = manager.getRepository(User);
-				const classroom = await classRepository.findOneBy({ id });
-				if (!classroom) throw this.classNotFound();
-				if (classroom.status === "CLOSED") {
-					throw new ConflictException({ code: "CLASS_CLOSED", message: "Cannot assign a teacher to a closed class." });
-				}
-
-				const users = await userRepository.findBy(dto.teacherUserIds.map((teacherId) => ({ id: teacherId })));
-				if (users.length !== dto.teacherUserIds.length || users.some((user) => user.role !== "TEACHER" || user.status !== "ACTIVE")) {
-					throw new BadRequestException({ code: "INVALID_TEACHER", message: "Only active teacher accounts can be assigned." });
-				}
-
-				const existing = await classTeacherRepository.findBy({ classId: id });
-				const existingIds = new Set(existing.map((assignment) => assignment.teacherUserId));
-				const newIds = dto.teacherUserIds.filter((teacherId) => !existingIds.has(teacherId));
-				if (newIds.length !== dto.teacherUserIds.length) {
-					throw new ConflictException({ code: "ASSIGNMENT_EXISTS", message: "One or more teachers are already assigned to this class." });
-				}
-
-				await classTeacherRepository.save(newIds.map((teacherUserId) => classTeacherRepository.create({ classId: id, teacherUserId })));
-				await this.auditLogsService.record(manager, {
-					actorUserId: actor.id,
-					actorName: actor.fullName,
-					action: "ASSIGN_TEACHER",
-					resourceType: "class",
-					resourceId: id,
-					oldValue: { teacherUserIds: existing.map((assignment) => assignment.teacherUserId) },
-					newValue: { teacherUserIds: [...existingIds, ...newIds] },
-					ipAddress,
-				});
-				return newIds.map((teacherUserId) => ({ classId: id, teacherUserId }));
-			});
-		} catch (error) {
-			if (isUniqueViolation(error)) {
-				throw new ConflictException({ code: "ASSIGNMENT_EXISTS", message: "One or more teachers are already assigned to this class." });
+		return this.dataSource.transaction(async (manager) => {
+			const classRepository = manager.getRepository(Classroom);
+			const classTeacherRepository = manager.getRepository(ClassTeacher);
+			const userRepository = manager.getRepository(User);
+			const classroom = await classRepository.findOneBy({ id });
+			if (!classroom) throw this.classNotFound();
+			if (classroom.status === "CLOSED") {
+				throw new ConflictException({ code: "CLASS_CLOSED", message: "Không thể phân công giáo viên vào lớp đã đóng." });
 			}
-			throw error;
-		}
+
+			const users = await userRepository.findBy(dto.teacherUserIds.map((teacherId) => ({ id: teacherId })));
+			if (users.length !== dto.teacherUserIds.length || users.some((user) => user.role !== "TEACHER" || user.status !== "ACTIVE")) {
+				throw new BadRequestException({ code: "INVALID_TEACHER", message: "Chỉ được phân công tài khoản giáo viên đang hoạt động." });
+			}
+
+			const existing = await classTeacherRepository.findBy({ classId: id });
+			const existingIds = new Set(existing.map((assignment) => assignment.teacherUserId));
+			const newIds = dto.teacherUserIds.filter((teacherId) => !existingIds.has(teacherId));
+			if (newIds.length !== dto.teacherUserIds.length) {
+				throw new ConflictException({ code: "ASSIGNMENT_EXISTS", message: "Một hoặc nhiều giáo viên đã được phân công vào lớp." });
+			}
+
+			await classTeacherRepository.save(newIds.map((teacherUserId) => classTeacherRepository.create({ classId: id, teacherUserId })));
+			await this.auditLogsService.record(manager, {
+				actorUserId: actor.id,
+				actorName: actor.fullName,
+				action: "ASSIGN_TEACHER",
+				resourceType: "class",
+				resourceId: id,
+				oldValue: { teacherUserIds: existing.map((assignment) => assignment.teacherUserId) },
+				newValue: { teacherUserIds: [...existingIds, ...newIds] },
+				ipAddress,
+			});
+			return newIds.map((teacherUserId) => ({ classId: id, teacherUserId }));
+		});
 	}
 
 	async removeTeacher(id: string, teacherUserId: string, actor: ClassActor, ipAddress: string | null) {

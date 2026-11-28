@@ -5,7 +5,6 @@ import {
 	IsOptional,
 	IsString,
 	IsUUID,
-	Matches,
 	Max,
 	MaxLength,
 	Min,
@@ -37,11 +36,9 @@ export class ListAuditLogsQueryDto {
 	resourceId?: string;
 
 	@IsDateString({ strict: true })
-	@Matches(/^\d{4}-\d{2}-\d{2}$/)
 	from!: string;
 
 	@IsDateString({ strict: true })
-	@Matches(/^\d{4}-\d{2}-\d{2}$/)
 	to!: string;
 
 	@IsOptional()

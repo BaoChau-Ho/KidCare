@@ -115,19 +115,25 @@ Importer cần snapshot runtime của mock DB để giữ nguyên UUID và các 
    DevTools có thể hiện `undefined` vì `copy()` không trả kết quả; dữ liệu vẫn được chép vào clipboard.
 4. Tạo `mock-data.json` ở thư mục gốc repository, dán clipboard vào và lưu. File này đã được Git ignore; không commit file này.
 
-## 5. Import mock frontend vào PostgreSQL
+## 5. Import mock Stage 2 vào PostgreSQL
 
-Khởi động PostgreSQL local bằng Docker, cấu hình `backend/.env` trỏ tới database đó (Compose publish cổng host `5433`), rồi chạy các migration cần thiết trước. Từ thư mục `backend`, chạy:
+Đảm bảo PostgreSQL đang chạy, `backend/.env` trỏ tới đúng DB, và migrations tạo các bảng Stage 2 đã được áp dụng. Từ thư mục `backend`:
 
 ```powershell
 npm run db:import-mock -- ../mock-data.json --confirm
 ```
 
-Importer đọc snapshot frontend trong `mock-data.json` ở thư mục gốc và nhập dữ liệu theo thứ tự khóa ngoại, bên trong một transaction: users (mật khẩu được hash lại bằng Argon2), classes, children, liên kết phụ huynh/giáo viên, attendance, leave requests, health records, allergies, conditions, vaccinations, medical visits, activities, participants, images, pickup requests và notifications. Các mảng tùy chọn không có trong snapshot sẽ được bỏ qua. Ảnh hoạt động (nếu có) được lưu trong `backend/uploads/activities` hoặc `ACTIVITY_UPLOAD_DIR`.
+Importer chạy trong một transaction và chỉ nhập các bảng đã có backend schema:
 
-Script không truncate hoặc xóa dữ liệu trong database. Chạy lại sẽ cập nhật bản ghi theo UUID, email user, hoặc tên lớp/năm học. Chỉ dùng với database local/test, không dùng database chung hay production. Thiếu ID được tham chiếu hoặc chưa chạy migration sẽ khiến transaction rollback. Snapshot frontend không có audit logs; backend tiếp tục tạo log khi có thao tác qua API. User demo dùng mật khẩu `Password@123`.
+- users (mật khẩu được hash bằng Argon2),
+- classes và phân công giáo viên,
+- children và liên kết phụ huynh.
 
-Sau khi import, đặt `VITE_USE_MOCK=false`, khởi động lại Vite và đăng nhập bằng user đã import để thử frontend với backend. Mở `/admin/users` để thử quản lý user; Manager có thể thử `/manager/classes` và các trang trẻ nếu đã được nối API.
+Importer **không** nhập audit logs, notifications, attendance, health records hoặc dữ liệu Stage 3 trở đi. Audit log backend được tạo khi thực hiện mutation qua API sau khi import; muốn thấy log, hãy tạo hoặc sửa user/lớp/trẻ bằng frontend khi `VITE_USE_MOCK=false`.
+
+Chỉ chạy importer trên database local/test. User trùng email và lớp trùng tên/năm học sẽ được cập nhật/ghép; các quan hệ được lưu theo UUID nguồn. Tài khoản demo từ mock dùng `Password@123`.
+
+Sau khi import, chuyển `VITE_USE_MOCK=false`, khởi động lại Vite và đăng nhập bằng tài khoản đã import. Mở `/admin/users` để thử quản lý user; Manager có thể thử `/manager/classes` và các trang trẻ nếu đã được nối API.
 
 ## 6. Lỗi thường gặp
 

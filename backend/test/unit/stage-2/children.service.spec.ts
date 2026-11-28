@@ -256,16 +256,8 @@ describe('GĐ2 · ChildrenService', () => {
       expectHttpError(await getError(() => service.getOne(CHILD_ID, TEACHER)), ForbiddenException, 'CHILD_ACCESS_DENIED');
     });
 
-    it('UT-CHILD-09c MEDICAL_STAFF xem hồ sơ tối thiểu, không thấy dữ liệu cá nhân nhạy cảm', async () => {
-      classes.findOne.mockResolvedValue(activeClass);
-
-      await expect(service.getOne(CHILD_ID, { ...MANAGER, role: 'MEDICAL_STAFF' })).resolves.toEqual({
-        id: CHILD_ID,
-        name: 'Bé An',
-        classId: CLASS_ID,
-        className: 'Lá 1',
-        status: 'ACTIVE',
-      });
+    it.each(['ADMIN', 'MEDICAL_STAFF'] as const)('UT-CHILD-09c vai trò %s hiện không xem được hồ sơ trẻ → 403', async (role) => {
+      expectHttpError(await getError(() => service.getOne(CHILD_ID, { ...MANAGER, role })), ForbiddenException, 'CHILD_ACCESS_DENIED');
     });
 
     it('UT-CHILD-09d trẻ không tồn tại → 404', async () => {
@@ -301,24 +293,9 @@ describe('GĐ2 · ChildrenService', () => {
       expect(qb.innerJoin).toHaveBeenCalledWith(entity, alias, expect.any(String), { actorId: actor.id });
     });
 
-    it('UT-CHILD-10c MEDICAL_STAFF xem danh sách trẻ với dữ liệu tối thiểu', async () => {
-      children.createQueryBuilder.mockReturnValue(createQueryBuilderMock([makeChild()], 1));
-      classes.findOne.mockResolvedValue(activeClass);
-
-      const result = await service.list(query(), { ...MANAGER, role: 'MEDICAL_STAFF' });
-
-      expect(result.items).toEqual([{
-        id: CHILD_ID,
-        name: 'Bé An',
-        classId: CLASS_ID,
-        className: 'Lá 1',
-        status: 'ACTIVE',
-      }]);
-    });
-
-    it('UT-CHILD-10d ADMIN không xem được danh sách trẻ', async () => {
+    it.each(['ADMIN', 'MEDICAL_STAFF'] as const)('UT-CHILD-10c vai trò %s không xem được danh sách trẻ → 403', async (role) => {
       children.createQueryBuilder.mockReturnValue(createQueryBuilderMock());
-      expectHttpError(await getError(() => service.list(query(), { ...MANAGER, role: 'ADMIN' })), ForbiddenException, 'CHILD_ACCESS_DENIED');
+      expectHttpError(await getError(() => service.list(query(), { ...MANAGER, role })), ForbiddenException, 'CHILD_ACCESS_DENIED');
     });
   });
 });

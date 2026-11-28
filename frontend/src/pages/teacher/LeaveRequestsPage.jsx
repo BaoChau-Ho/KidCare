@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell.jsx'
 import Field from '../../components/Field.jsx'
 import Select from '../../components/Select.jsx'
@@ -9,18 +8,12 @@ import Pagination from '../../components/Pagination.jsx'
 import useFetch from '../../hooks/useFetch.js'
 import { listLeaveRequests, approveLeave, rejectLeave } from '../../services/leave.js'
 import { LEAVE_STATUS, fmtDate } from '../../services/labels.js'
-import useMarkRelatedNotificationsRead from '../../hooks/useMarkRelatedNotificationsRead.js'
-import useNotificationTargetHighlight from '../../hooks/useNotificationTargetHighlight.js'
 
 // UC-08 (phía giáo viên) — Duyệt hoặc từ chối đơn xin nghỉ của lớp mình phụ trách
 export default function LeaveRequestsPage() {
-  const [params] = useSearchParams()
-  const [status, setStatus] = useState(params.has('highlightId') ? '' : 'PENDING')
+  const [status, setStatus] = useState('PENDING')
   const [page, setPage] = useState(1)
   const { data, loading, error, reload } = useFetch(() => listLeaveRequests({ status, page, limit: 10 }), [status, page])
-  const highlightId = params.get('highlightId')
-  useMarkRelatedNotificationsRead(['leave', 'leave_request'], data?.items.map((item) => item.id))
-  useNotificationTargetHighlight(highlightId, data?.items)
   const [dialog, setDialog] = useState(null) // { type: 'approve' | 'reject', item }
   const [flash, setFlash] = useState('')
   const done = (m) => { setDialog(null); setFlash(m); reload() }
@@ -43,7 +36,7 @@ export default function LeaveRequestsPage() {
             {loading && !data && <tr><td colSpan="6" className="empty">Đang tải...</td></tr>}
             {data?.items.length === 0 && <tr><td colSpan="6" className="empty">{status === 'PENDING' ? 'Không có đơn nào đang chờ duyệt.' : 'Không có đơn nào khớp bộ lọc.'}</td></tr>}
             {data?.items.map((l) => (
-              <tr key={l.id} data-notification-target={l.id}>
+              <tr key={l.id}>
                 <td>{l.childName}<br /><span className="muted">{l.className}</span></td>
                 <td>{l.fromDate === l.toDate ? fmtDate(l.fromDate) : `${fmtDate(l.fromDate)} - ${fmtDate(l.toDate)}`}</td>
                 <td className="wrap">{l.reason}</td>

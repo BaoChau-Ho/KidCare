@@ -135,7 +135,7 @@ export function checkOutChild(db, actor, child, date, time) {
   rec.updatedAt = now()
   audit(db, actor, 'CHECK_OUT', 'attendance', rec.id, { label: child.name, after: { checkOutTime: time } })
   notify(db, parentsOf(db, child.id), {
-    type: 'ATTENDANCE', title: `${child.name} đã ra về`, content: `Giờ về ${time}.`, relatedType: 'attendance', relatedId: child.id,
+    type: 'ATTENDANCE', title: `${child.name} đã ra về`, content: `Giờ về ${time}.`, relatedType: 'child', relatedId: child.id,
   })
   return rec
 }

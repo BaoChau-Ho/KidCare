@@ -7,7 +7,6 @@ import { ListAuditLogsQueryDto } from "./dto/list-audit-logs-query.dto";
 import { User } from "../users/user.entity";
 import { Classroom } from "../classes/class.entity";
 import { Child } from "../children/child.entity";
-import { isValidDateString } from "../common/school-time";
 
 export type AuditLogInput = Pick<
 	AuditLog,
@@ -39,12 +38,6 @@ export class AuditLogsService {
 		return repository.save(log);
 	}
     async list(query: ListAuditLogsQueryDto) {
-        if (!isValidDateString(query.from) || !isValidDateString(query.to)) {
-            throw new BadRequestException({
-                code: "INVALID_AUDIT_DATE",
-                message: "`from` và `to` phải là ngày hợp lệ theo định dạng YYYY-MM-DD.",
-            });
-        }
         if (query.from > query.to) {
             throw new BadRequestException({
                 code: "INVALID_DATE_RANGE",
