@@ -26,18 +26,6 @@ route('POST', '/notifications/read-all', ({ db, actor }) => {
   return { updated: changed }
 })
 
-route('POST', '/notifications/read-related', ({ db, actor, body }) => {
-  const ids = new Set(Array.isArray(body.relatedIds) ? body.relatedIds : [])
-  let updated = 0
-  for (const n of mine(db, actor)) {
-    if (n.relatedType === body.relatedType && ids.has(n.relatedId) && !n.readAt) {
-      n.readAt = now()
-      updated += 1
-    }
-  }
-  return { updated }
-})
-
 route('POST', '/notifications/broadcast', ({ db, actor, body }) => {
   need(actor, 'TEACHER')
   const title = (body.title || '').trim(), content = (body.content || '').trim()
