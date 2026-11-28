@@ -85,9 +85,7 @@ describe('GĐ2 · Quản lý tài khoản, lớp, trẻ (e2e)', () => {
       expect(await count(`SELECT count(*)::int AS count FROM class_teachers WHERE class_id = $1`, [classroom.id])).toBe(1);
     });
 
-    // Lỗi đã biết (README vấn đề #16): request thua cuộc nhận 500 vì assignTeachers không bắt
-    // unique violation của PK_class_teachers (linkParent thì có bắt). Khi đã sửa → đổi it.failing thành it.
-    it.failing('E2E-CLASS-03b request phân công trùng gửi đồng thời nhận 409, không phải 500', async () => {
+    it('E2E-CLASS-03b request phân công trùng gửi đồng thời nhận 409, không phải 500', async () => {
       // Làm chậm INSERT để cả 2 request chắc chắn qua bước kiểm tra trùng trước khi request đầu commit.
       await e2e.ds.query(`
         CREATE FUNCTION slow_class_teacher_insert() RETURNS trigger AS $$
@@ -207,9 +205,7 @@ describe('GĐ2 · Quản lý tài khoản, lớp, trẻ (e2e)', () => {
       await api().get(`/audit-logs?${query}`).set(bearer(admin)).expect(400);
     });
 
-    // Lỗi đã biết (README vấn đề #17): DTO nhận "2026-11-01T00:00:00Z" nhưng service ghép thêm
-    // "T00:00:00.000Z" thành ngày không hợp lệ → PostgreSQL lỗi → 500. Khi đã sửa → đổi it.failing thành it.
-    it.failing('E2E-AUDIT-04 from / to có kèm giờ (chuẩn ISO 8601) → 400 hoặc 200, không được 500', async () => {
+    it('E2E-AUDIT-04 from / to có kèm giờ (chuẩn ISO 8601) → 400 hoặc 200, không được 500', async () => {
       const res = await api().get('/audit-logs?from=2026-11-01T00:00:00Z&to=2026-11-30T23:59:59Z').set(bearer(admin));
       expect([200, 400]).toContain(res.status);
     });

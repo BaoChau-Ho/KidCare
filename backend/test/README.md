@@ -12,7 +12,7 @@ Cập nhật lần cuối: **09/11/2026**, trên `main` tại commit `bdf5064` (
 | 3 | Điểm danh, nghỉ học (UC-06, UC-07, UC-08) | 214 | 0 | 0 | ✅ Unit xong |
 | 4 | Hồ sơ sức khỏe (UC-09) | 0 | 0 | 0 | ⏸ Chưa có code; e2e viết trước, tự bỏ qua |
 | 5 | Hoạt động, đón trẻ (UC-10, UC-11, UC-12) | 0 | 0 | 0 | ⏸ Chưa có code; e2e viết trước, tự bỏ qua |
-| | **Tổng unit** | **423** | **4** | **0** | |
+| | **Total unit** | **424** | **4** | **0** | |
 
 | E2E (API thật + PostgreSQL thật) | File | Đạt | Trong đó lỗi đã biết |
 |---|---|---|---|
@@ -20,13 +20,13 @@ Cập nhật lần cuối: **09/11/2026**, trên `main` tại commit `bdf5064` (
 | 1 · Đăng nhập, token | `e2e/stage-1-auth.e2e-spec.ts` | 21 | 2 (#5, #15) |
 | 1 · Đăng ký, duyệt | `e2e/stage-1-registration.e2e-spec.ts` | 14 | 0 |
 | 2 · Phân quyền, IDOR | `e2e/stage-2-access.e2e-spec.ts` | 80 | 0 |
-| 2 · Quản lý tài khoản, lớp, trẻ | `e2e/stage-2-management.e2e-spec.ts` | 21 | 3 (#9, #16, #17) |
+| 2 - Management | `e2e/stage-2-management.e2e-spec.ts` | 21 | 1 (#9) |
 | 3 · Điểm danh, đơn nghỉ | `attendance-leave.e2e-spec.ts` | 46 | 0 |
 | 3 · Ràng buộc database | `database-constraints.e2e-spec.ts` | 9 | 0 |
 | 3 · Response khớp `openapi.yaml` | `openapi-contract.e2e-spec.ts` | 3 | 0 |
 | 4 · Hồ sơ sức khỏe | `e2e/stage-4-health.e2e-spec.ts` | 0 (102 bỏ qua) | 0 |
 | 5 · Hoạt động, đón trẻ | `e2e/stage-5-activity-pickup.e2e-spec.ts` | 0 (93 bỏ qua) | 0 |
-| **Tổng e2e** | | **200** | **6** |
+| **Total e2e** | | **200** | **4** |
 
 Unit test stage 3 gồm 196 test trong `test/unit/stage-3/` và 18 test nằm cạnh code (`src/attendance/attendance-policy.spec.ts`: 14, `src/common/school-time.spec.ts`: 4). E2E stage 3 nằm ở gốc `test/`, do người viết code stage 3 viết kèm PR #19.
 
@@ -273,8 +273,8 @@ Kiểm tra:
 | 13 | Làm theo README không chạy được backend: README bảo `cp .env.example .env` nhưng `backend/.env.example` không có trên `main`; `docker-compose.yml` map PostgreSQL ra cổng `5433` còn code mặc định `5432`; thiếu `JWT_SECRET` thì `AuthModule` ném lỗi ngay khi khởi động (NFR-MNT-03) | `README.md`, `docker-compose.yml`, `backend/` | Major | Mở |
 | 14 | Entity lệch với migration: migration giai đoạn 2 tạo khóa ngoại, CHECK constraint và index mà entity không khai báo. Lần chạy `npm run migration:generate` tới sẽ sinh migration **xóa** các khóa ngoại và CHECK của `children`, `classes`, `class_teachers`, `child_parents`. Test: E2E-MIG-02 | `src/children/*.entity.ts`, `src/classes/*.entity.ts` | Major | Mở |
 | 15 | Access token sống 1 giờ (`expiresIn: '1h'`), NFR-SEC-04 yêu cầu khoảng 15 phút. Test: E2E-AUTH-08 | `src/auth/auth.module.ts` | Minor, cần nhóm chốt | Mở |
-| 16 | 2 request phân công cùng một giáo viên gửi đồng thời: database chặn trùng đúng, nhưng request thứ hai nhận 500 thay vì 409, vì `assignTeachers` không bắt unique violation (`linkParent` thì có bắt). Test: E2E-CLASS-03b | `ClassesService.assignTeachers` | Minor | Mở |
-| 17 | `GET /audit-logs?from=2026-11-01T00:00:00Z&...` trả 500: DTO nhận chuỗi ISO có giờ, service ghép thêm `T00:00:00.000Z` thành ngày không hợp lệ, PostgreSQL báo lỗi. Test: E2E-AUDIT-04 | `AuditLogsService.list`, `ListAuditLogsQueryDto` | Minor | Mở |
+| 16 | Concurrent duplicate teacher assignment now maps PostgreSQL unique violation to HTTP 409. | `src/classes/classes.service.ts` | Minor | Fixed; E2E-CLASS-03b enabled |
+| 17 | Audit log date filters now accept only valid `YYYY-MM-DD` values, preventing invalid timestamp construction. | `src/audit-logs/` | Minor | Fixed; E2E-AUDIT-04 enabled |
 | 18 | CI không chạy migration trước e2e, nên trên database trắng 58/58 e2e giai đoạn 3 lỗi `relation "leave_requests" does not exist` | `.github/workflows/ci.yml` | Major | Đã sửa (`a856816`, PR #20) |
 | 19 | `openapi.yaml` lệch với code giai đoạn 3: roster lớp, trạng thái hôm nay của trẻ, thiếu `PATCH /leave-requests/{id}/cancel`. Test: `openapi-contract.e2e-spec.ts` | `docs/02-design/openapi.yaml` | Minor | Đã sửa (`a856816`, PR #20) |
 | 20 | `DatabaseModule` không đóng DataSource khi app tắt (`app.close()`). Trong test, Jest không thoát; khi chạy thật, tắt app không đóng kết nối PostgreSQL. Test đã tự đóng trong hai khung e2e. Nên thêm `OnApplicationShutdown` vào `DatabaseModule` | `src/database/database.module.ts` | Minor | Mở |

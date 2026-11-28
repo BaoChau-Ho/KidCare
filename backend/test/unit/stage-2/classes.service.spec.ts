@@ -185,6 +185,17 @@ describe('GĐ2 · ClassesService', () => {
       expect(await invalidFields(AssignTeachersDto, { teacherUserIds: [] })).toEqual(['teacherUserIds']);
     });
 
+    it('UT-CLASS-07c database unique violation during concurrent assignment returns 409', async () => {
+      users.findBy.mockResolvedValue([makeTeacher()]);
+      assignments.save.mockRejectedValue(Object.assign(new Error('duplicate key'), { code: '23505' }));
+
+      expectHttpError(
+        await getError(() => service.assignTeachers(CLASS_ID, { teacherUserIds: [TEACHER_ID] }, MANAGER, IP)),
+        ConflictException,
+        'ASSIGNMENT_EXISTS',
+      );
+    });
+
     it('UT-CLASS-07c phân công hợp lệ → lưu và audit log ghi danh sách cũ / mới', async () => {
       users.findBy.mockResolvedValue([makeTeacher()]);
       const result = await service.assignTeachers(CLASS_ID, { teacherUserIds: [TEACHER_ID] }, MANAGER, IP);
